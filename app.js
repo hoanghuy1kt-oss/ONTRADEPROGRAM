@@ -61,12 +61,13 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // State variables
   let currentStep = 1;
-  const totalSteps = 3;
+  let totalSteps = 3;
   let uploadedImages = []; // Backing state for files
 
   // Autocomplete and database variables
   const outletNameInput = document.getElementById('outletName');
   const programNameInput = document.getElementById('programName');
+  const eventFieldsContainer = document.getElementById('eventFieldsContainer');
   const autocompleteList = document.getElementById('autocompleteList');
   let activeItemIndex = -1;
 
@@ -117,12 +118,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   
+  // 1. Accordion Toggle (Removed - Always Shown)
   // ----------------------------------------------------
-  // 1. Accordion Toggle
-  // ----------------------------------------------------
-  accordionHeader.addEventListener('click', () => {
-    infoAccordion.classList.toggle('active');
-  });
 
   // ----------------------------------------------------
   // 1b. Searchable Autocomplete Dropdown
@@ -236,6 +233,53 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Radio interactions (Activity Type: Event/Display)
+  const activityTypeInputs = document.querySelectorAll('input[name="activityType"]');
+  activityTypeInputs.forEach(input => {
+    const card = input.closest('.selector-card');
+    
+    // Sync initial state
+    if (input.checked) {
+      card.classList.add('checked');
+    }
+
+    input.addEventListener('change', () => {
+      // Uncheck other radio cards in the group
+      activityTypeInputs.forEach(otherInput => {
+        otherInput.closest('.selector-card').classList.remove('checked');
+      });
+      
+      // Check current
+      if (input.checked) {
+        card.classList.add('checked');
+        handleActivityTypeChange(input.value);
+      }
+    });
+  });
+
+  function handleActivityTypeChange(type) {
+    if (type === 'Display') {
+      eventFieldsContainer.style.display = 'none';
+      totalSteps = 2;
+      document.querySelector('[data-target-step="2"]').style.display = 'none';
+      
+      // Update Step 3 Upload labels for Display
+      document.querySelector('#group-gallery .form-label').innerHTML = 'Hình ảnh Trưng bày <span class="required">*</span>';
+      document.querySelector('#group-gallery .form-label-desc').textContent = 'Tải lên tối thiểu 4 bức ảnh rõ nét trưng bày thực tế tại Outlet.';
+    } else {
+      eventFieldsContainer.style.display = 'block';
+      totalSteps = 3;
+      document.querySelector('[data-target-step="2"]').style.display = 'flex';
+      
+      // Restore default Step 3 labels for Event
+      document.querySelector('#group-gallery .form-label').innerHTML = 'Hình ảnh chương trình sự kiện diễn ra <span class="required">*</span>';
+      document.querySelector('#group-gallery .form-label-desc').textContent = 'Tải lên tối thiểu 4 bức ảnh rõ nét thể hiện hoạt động thực tế.';
+    }
+    
+    currentStep = 1;
+    updateStepUI();
+  }
+
   // Radio interactions (Tôi cam đoan)
   const radioInputs = document.querySelectorAll('input[name="guarantee"]');
   radioInputs.forEach(input => {
@@ -259,23 +303,44 @@ document.addEventListener('DOMContentLoaded', () => {
   // 3. Multi-Step Form Navigation & Progress
   // ----------------------------------------------------
   function updateStepUI() {
-    // Hide all steps, show active step
+    const isDisplay = document.querySelector('input[name="activityType"]:checked').value === 'Display';
+    
+    // Hide all steps, show active step based on type
     formSteps.forEach(step => {
       step.classList.remove('active');
-      if (parseInt(step.dataset.step) === currentStep) {
-        step.classList.add('active');
+      const stepNum = parseInt(step.dataset.step);
+      
+      if (isDisplay) {
+        if (currentStep === 1 && stepNum === 1) {
+          step.classList.add('active');
+        } else if (currentStep === 2 && stepNum === 3) {
+          step.classList.add('active');
+        }
+      } else {
+        if (stepNum === currentStep) {
+          step.classList.add('active');
+        }
       }
     });
     
     // Update Stepper capsules classes
     stepCapsules.forEach(capsule => {
-      const stepNum = parseInt(capsule.dataset.targetStep);
+      const targetStep = parseInt(capsule.dataset.targetStep);
       capsule.classList.remove('active', 'completed');
       
-      if (stepNum === currentStep) {
-        capsule.classList.add('active');
-      } else if (stepNum < currentStep) {
-        capsule.classList.add('completed');
+      if (isDisplay) {
+        if (targetStep === 1) {
+          if (currentStep === 1) capsule.classList.add('active');
+          else capsule.classList.add('completed');
+        } else if (targetStep === 3) {
+          if (currentStep === 2) capsule.classList.add('active');
+        }
+      } else {
+        if (targetStep === currentStep) {
+          capsule.classList.add('active');
+        } else if (targetStep < currentStep) {
+          capsule.classList.add('completed');
+        }
       }
     });
 
@@ -283,9 +348,14 @@ document.addEventListener('DOMContentLoaded', () => {
     stepNumberBadge.textContent = `Bước ${currentStep}/${totalSteps}`;
     
     let stepName = '';
-    if (currentStep === 1) stepName = 'Thông tin chung';
-    else if (currentStep === 2) stepName = 'Loại hình sự kiện';
-    else if (currentStep === 3) stepName = 'Minh chứng';
+    if (isDisplay) {
+      if (currentStep === 1) stepName = 'Thông tin chung';
+      else if (currentStep === 2) stepName = 'Minh chứng';
+    } else {
+      if (currentStep === 1) stepName = 'Thông tin chung';
+      else if (currentStep === 2) stepName = 'Loại hình sự kiện';
+      else if (currentStep === 3) stepName = 'Minh chứng';
+    }
     currentStepLabel.textContent = stepName;
     
     // Update footer buttons visibility & text
@@ -334,7 +404,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // Enable navigation by clicking completed steps directly
   stepCapsules.forEach(capsule => {
     capsule.addEventListener('click', () => {
-      const targetStep = parseInt(capsule.dataset.targetStep);
+      const isDisplay = document.querySelector('input[name="activityType"]:checked').value === 'Display';
+      let targetStep = parseInt(capsule.dataset.targetStep);
+      
+      if (isDisplay) {
+        if (targetStep === 2) return; // skip step 2 for Display flow
+        if (targetStep === 3) targetStep = 2; // map HTML step 3 to step 2 in Display flow
+      }
+      
       // Only allow navigating backwards or to steps that have already been validated
       if (targetStep < currentStep) {
         currentStep = targetStep;
@@ -387,6 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
   
   function validateStep(step) {
     let isValid = true;
+    const isDisplay = document.querySelector('input[name="activityType"]:checked').value === 'Display';
     
     if (step === 1) {
       // Validate Outlet Name
@@ -398,49 +476,52 @@ document.addEventListener('DOMContentLoaded', () => {
         clearError('group-outlet-name');
       }
 
-      // Validate Program Name
-      const programName = document.getElementById('programName');
-      if (!programName.value.trim()) {
-        showError('group-program-name', 'Tên chương trình không được để trống.');
-        isValid = false;
-      } else if (programName.value.trim().length < 5) {
-        showError('group-program-name', 'Tên chương trình phải có tối thiểu 5 ký tự.');
-        isValid = false;
-      } else {
-        clearError('group-program-name');
-      }
-      
-      // Validate Start & End Dates
-      const startDate = document.getElementById('startDate');
-      const endDate = document.getElementById('endDate');
-      
-      if (!startDate.value) {
-        showError('group-start-date', 'Vui lòng chọn ngày bắt đầu.');
-        isValid = false;
-      } else {
-        clearError('group-start-date');
-      }
-      
-      if (!endDate.value) {
-        showError('group-end-date', 'Vui lòng chọn ngày kết thúc.');
-        isValid = false;
-      } else {
-        clearError('group-end-date');
-      }
-      
-      if (startDate.value && endDate.value) {
-        const start = new Date(startDate.value);
-        const end = new Date(endDate.value);
-        if (start > end) {
-          showError('group-end-date', 'Ngày kết thúc phải diễn ra sau ngày bắt đầu.');
+      // Only validate event fields if NOT Display
+      if (!isDisplay) {
+        // Validate Program Name
+        const programName = document.getElementById('programName');
+        if (!programName.value.trim()) {
+          showError('group-program-name', 'Tên chương trình không được để trống.');
+          isValid = false;
+        } else if (programName.value.trim().length < 5) {
+          showError('group-program-name', 'Tên chương trình phải có tối thiểu 5 ký tự.');
+          isValid = false;
+        } else {
+          clearError('group-program-name');
+        }
+        
+        // Validate Start & End Dates
+        const startDate = document.getElementById('startDate');
+        const endDate = document.getElementById('endDate');
+        
+        if (!startDate.value) {
+          showError('group-start-date', 'Vui lòng chọn ngày bắt đầu.');
+          isValid = false;
+        } else {
+          clearError('group-start-date');
+        }
+        
+        if (!endDate.value) {
+          showError('group-end-date', 'Vui lòng chọn ngày kết thúc.');
           isValid = false;
         } else {
           clearError('group-end-date');
         }
+        
+        if (startDate.value && endDate.value) {
+          const start = new Date(startDate.value);
+          const end = new Date(endDate.value);
+          if (start > end) {
+            showError('group-end-date', 'Ngày kết thúc phải diễn ra sau ngày bắt đầu.');
+            isValid = false;
+          } else {
+            clearError('group-end-date');
+          }
+        }
       }
     }
     
-    else if (step === 2) {
+    else if (step === 2 && !isDisplay) {
       // Validate Event Type Checkboxes (At least one checked)
       const checkedTypes = document.querySelectorAll('input[name="eventType"]:checked');
       if (checkedTypes.length === 0) {
@@ -451,10 +532,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
     
-    else if (step === 3) {
+    else if ((step === 3 && !isDisplay) || (step === 2 && isDisplay)) {
       // Validate Gallery Images (At least 4)
       if (uploadedImages.length < 4) {
-        showError('group-gallery', `Hình ảnh sự kiện chưa đủ điều kiện. Cần tải lên tối thiểu 4 ảnh (Hiện tại: ${uploadedImages.length} ảnh).`);
+        const errorMsgLabel = isDisplay ? 'Hình ảnh trưng bày chưa đủ điều kiện. Cần tải lên tối thiểu 4 ảnh.' : 'Hình ảnh sự kiện chưa đủ điều kiện. Cần tải lên tối thiểu 4 ảnh.';
+        showError('group-gallery', `${errorMsgLabel} (Hiện tại: ${uploadedImages.length} ảnh).`);
         galleryError.textContent = `Vui lòng đăng thêm tối thiểu ${4 - uploadedImages.length} ảnh nữa để đáp ứng điều kiện CM.`;
         galleryError.style.display = 'flex';
         isValid = false;
@@ -750,7 +832,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     document.getElementById('sumOutletName').textContent = outletVal;
     document.getElementById('sumProgramName').textContent = programVal;
-    document.getElementById('sumEventTime').textContent = `${formatDate(startVal)} - ${formatDate(endVal)}`;
+    document.getElementById('sumEventTime').textContent = startVal && endVal ? `${formatDate(startVal)} - ${formatDate(endVal)}` : 'Trưng bày thực tế';
     document.getElementById('sumEventType').textContent = truncateText(typesVal, 50);
     document.getElementById('sumImages').textContent = `${uploadedImages.length} ảnh đã xác thực`;
     
@@ -774,16 +856,28 @@ document.addEventListener('DOMContentLoaded', () => {
     Promise.all(compressPromises)
       .then(base64Images => {
         // Create report object
+        const isDisplay = document.querySelector('input[name="activityType"]:checked').value === 'Display';
         const outletVal = document.getElementById('outletName').value.trim();
-        const programVal = document.getElementById('programName').value.trim();
-        const startVal = document.getElementById('startDate').value;
-        const endVal = document.getElementById('endDate').value;
-        const checkedBoxes = Array.from(document.querySelectorAll('input[name="eventType"]:checked'));
-        const typesList = checkedBoxes.map(cb => cb.value);
-        const typesVal = typesList.join(', ');
-        const contentVal = document.getElementById('eventContent').value;
-        const guaranteeVal = document.querySelector('input[name="guarantee"]:checked').value;
+        const programVal = isDisplay ? 'Trưng bày (Display)' : document.getElementById('programName').value.trim();
+        const startVal = isDisplay ? '' : document.getElementById('startDate').value;
+        const endVal = isDisplay ? '' : document.getElementById('endDate').value;
         
+        let typesList = [];
+        let typesVal = '';
+        let contentVal = '';
+        
+        if (!isDisplay) {
+          const checkedBoxes = Array.from(document.querySelectorAll('input[name="eventType"]:checked'));
+          typesList = checkedBoxes.map(cb => cb.value);
+          typesVal = typesList.join(', ');
+          contentVal = document.getElementById('eventContent').value;
+        } else {
+          typesList = ['Trưng bày (Display)'];
+          typesVal = 'Trưng bày (Display)';
+          contentVal = 'Hình ảnh trưng bày thực tế tại outlet';
+        }
+        
+        const guaranteeVal = document.querySelector('input[name="guarantee"]:checked').value;
         const reportId = 'REP_' + Date.now();
         let uploadPromise;
 
@@ -802,6 +896,7 @@ document.addEventListener('DOMContentLoaded', () => {
         uploadPromise.then(finalImages => {
           const newReport = {
             id: reportId,
+            activityType: isDisplay ? 'Display' : 'Event',
             outletName: outletVal,
             programName: programVal,
             startDate: startVal,
@@ -825,7 +920,7 @@ document.addEventListener('DOMContentLoaded', () => {
             reports.push(newReport);
             localStorage.setItem('diageo_reports', JSON.stringify(reports));
             renderReportsTable();
-            finishSubmission(nameVal, startVal, endVal, typesVal);
+            finishSubmission(outletVal, programVal, startVal, endVal, typesVal);
           }
         }).catch(err => {
           console.error("Upload error:", err);
@@ -895,6 +990,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.selector-card').forEach(card => {
       card.classList.remove('checked');
     });
+    
+    // Reset activityType radio UI state back to default (Event)
+    const defaultEventRadio = document.getElementById('actEvent');
+    if (defaultEventRadio) {
+      defaultEventRadio.checked = true;
+      defaultEventRadio.closest('.selector-card').classList.add('checked');
+      handleActivityTypeChange('Event');
+    }
     
     // Reset file manager state
     uploadedImages = [];
@@ -1088,12 +1191,16 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Dates cell
       const tdTime = document.createElement('td');
-      tdTime.innerHTML = `
-        <div class="date-td">
-          <strong>Bắt đầu:</strong> ${formatDate(report.startDate)}<br>
-          <strong>Kết thúc:</strong> ${formatDate(report.endDate)}
-        </div>
-      `;
+      if (report.activityType === 'Display' || (!report.startDate && !report.endDate)) {
+        tdTime.innerHTML = `<div class="date-td text-muted" style="font-style: italic;">Không áp dụng<br>(Trưng bày)</div>`;
+      } else {
+        tdTime.innerHTML = `
+          <div class="date-td">
+            <strong>Bắt đầu:</strong> ${formatDate(report.startDate)}<br>
+            <strong>Kết thúc:</strong> ${formatDate(report.endDate)}
+          </div>
+        `;
+      }
       
       // Categories cell
       const tdTypes = document.createElement('td');
@@ -1343,6 +1450,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const columns = [
       { header: 'Mã báo cáo', key: 'id', width: 18 },
       { header: 'Tên Outlet', key: 'outletName', width: 35 },
+      { header: 'Loại hoạt động', key: 'activityType', width: 18 },
       { header: 'Tên chương trình', key: 'programName', width: 35 },
       { header: 'Ngày bắt đầu', key: 'startDate', width: 15 },
       { header: 'Ngày kết thúc', key: 'endDate', width: 15 },
@@ -1386,11 +1494,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const row = worksheet.addRow({
         id: report.id,
         outletName: report.outletName || report.eventName || '-',
+        activityType: report.activityType === 'Display' ? 'Display' : 'Event',
         programName: report.programName || '-',
-        startDate: formatDate(report.startDate),
-        endDate: formatDate(report.endDate),
-        eventTypes: report.eventTypes.join(', '),
-        eventContent: report.eventContent || '(Không có tóm tắt)',
+        startDate: report.activityType === 'Display' ? '-' : (formatDate(report.startDate) || '-'),
+        endDate: report.activityType === 'Display' ? '-' : (formatDate(report.endDate) || '-'),
+        eventTypes: report.eventTypes ? report.eventTypes.join(', ') : '-',
+        eventContent: report.eventContent || '-',
         guarantee: report.guarantee,
         timestamp: new Date(report.timestamp).toLocaleString('vi-VN')
       });
@@ -1402,8 +1511,8 @@ document.addEventListener('DOMContentLoaded', () => {
       for (let colNum = 1; colNum <= columns.length; colNum++) {
         const cell = row.getCell(colNum);
         cell.font = { name: 'Segoe UI', size: 10, color: { argb: '1E293B' } };
-        // Center ID, dates, guarantee status, timestamp, and all image columns (colIndex >= 10)
-        const isCenter = colNum === 1 || colNum === 4 || colNum === 5 || colNum === 8 || colNum === 9 || colNum >= 10;
+        // Center ID, activityType, dates, guarantee status, timestamp, and all image columns (colIndex >= 11)
+        const isCenter = colNum === 1 || colNum === 3 || colNum === 5 || colNum === 6 || colNum === 9 || colNum === 10 || colNum >= 11;
         cell.alignment = { 
           vertical: 'middle', 
           horizontal: isCenter ? 'center' : 'left', 
@@ -1430,7 +1539,7 @@ document.addEventListener('DOMContentLoaded', () => {
               extension: 'jpeg'
             });
             worksheet.addImage(imageId, {
-              tl: { col: 9 + imgIdx, row: row.number - 1 },
+              tl: { col: 10 + imgIdx, row: row.number - 1 },
               ext: { width: 120, height: 90 }, // width & height in pixels
               editAs: 'oneCell'
             });
@@ -1454,7 +1563,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   extension: 'jpeg'
                 });
                 worksheet.addImage(imageId, {
-                  tl: { col: 9 + imgIdx, row: row.number - 1 },
+                  tl: { col: 10 + imgIdx, row: row.number - 1 },
                   ext: { width: 120, height: 90 },
                   editAs: 'oneCell'
                 });
@@ -1465,7 +1574,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .catch(err => {
               console.warn("CORS or network error fetching image for Excel, writing clickable link instead:", err);
               // Fallback: write hyperlink text in cell
-              worksheet.getCell(row.number, 10 + imgIdx).value = {
+              worksheet.getCell(row.number, 11 + imgIdx).value = {
                 text: `Xem ảnh ${imgIdx + 1}`,
                 hyperlink: imgSrc
               };
@@ -1546,9 +1655,21 @@ document.addEventListener('DOMContentLoaded', () => {
           radius: 0.05
         });
         
-        // Grouped Info Box (unified text box with runs to prevent overlaps)
-        slide.addText(
-          [
+        // Grouped Info Box (dynamic text runs based on activityType)
+        let textRuns = [];
+        if (report.activityType === 'Display') {
+          textRuns = [
+            { text: "TÊN OUTLET:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+            { text: (report.outletName || report.eventName || '-') + "\n\n", options: { color: "334155", fontSize: 9.5, bold: true } },
+            
+            { text: "LOẠI HOẠT ĐỘNG:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+            { text: "Trưng bày (Display)\n\n", options: { color: "6366f1", bold: true, fontSize: 9.5 } },
+            
+            { text: "TRẠNG THÁI XÁC THỰC:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+            { text: `${report.guarantee} tại thời điểm viếng thăm`, options: { color: "64748b", italic: true, fontSize: 8.5 } }
+          ];
+        } else {
+          textRuns = [
             { text: "TÊN OUTLET:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
             { text: (report.outletName || report.eventName || '-') + "\n", options: { color: "334155", fontSize: 9.0, bold: true } },
             
@@ -1559,22 +1680,24 @@ document.addEventListener('DOMContentLoaded', () => {
             { text: `${formatDate(report.startDate)} - ${formatDate(report.endDate)}\n`, options: { color: "475569", fontSize: 8.5 } },
             
             { text: "LOẠI HÌNH HOẠT ĐỘNG:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-            { text: `${report.eventTypes.join(', ')}\n`, options: { color: "6366f1", bold: true, fontSize: 8.5 } },
+            { text: `${report.eventTypes ? report.eventTypes.join(', ') : '-'}\n`, options: { color: "6366f1", bold: true, fontSize: 8.5 } },
             
             { text: "NỘI DUNG TÓM TẮT:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
             { text: `${report.eventContent || '(Không có tóm tắt)'}\n`, options: { color: "475569", fontSize: 8.5 } },
             
             { text: "TRẠNG THÁI XÁC THỰC:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
             { text: `${report.guarantee} tại thời điểm viếng thăm`, options: { color: "64748b", italic: true, fontSize: 8.0 } }
-          ],
-          {
-            x: 0.7, y: 1.35, w: 3.6, h: 4.5,
-            valign: "top"
-          }
-        );
+          ];
+        }
+
+        slide.addText(textRuns, {
+          x: 0.7, y: 1.35, w: 3.6, h: 4.5,
+          valign: "top"
+        });
 
         // 3. Right side: Dynamic Image Gallery Grid
-        slide.addText(`HÌNH ẢNH MINH CHỨNG SỰ KIỆN${pageSuffix.toUpperCase()}`, {
+        const galleryTitle = report.activityType === 'Display' ? 'HÌNH ẢNH MINH CHỨNG TRƯNG BÀY' : 'HÌNH ẢNH MINH CHỨNG SỰ KIỆN';
+        slide.addText(`${galleryTitle}${pageSuffix.toUpperCase()}`, {
           x: 4.8, y: 1.2, w: 8.0, fontSize: 10, bold: true, color: "4f46e5"
         });
 

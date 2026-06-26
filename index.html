@@ -53,21 +53,20 @@
         <p class="form-subtitle">Cổng thông tin dành cho Sales Team cập nhật hình ảnh hoạt động và sự kiện tại các điểm bán đã ký kết hợp đồng.</p>
       </header>
 
-      <!-- Accordion Box for Terms & Conditions -->
+      <!-- Terms & Conditions Info Card (Always Shown) -->
       <section class="info-accordion" id="infoAccordion">
         <div class="info-accordion-header" id="accordionHeader">
           <span class="info-accordion-title">
             <i class="fa-solid fa-circle-info"></i>
             Điều kiện & Lưu ý quan trọng khi thanh toán
           </span>
-          <i class="fa-solid fa-chevron-down info-accordion-icon"></i>
         </div>
         <div class="info-accordion-content" id="accordionContent">
           <div class="info-body">
             <strong>Điều kiện hợp lệ:</strong>
             <ul>
               <li>Hình ảnh event/activation phải đăng <strong>tối thiểu 4 tấm hình</strong> diễn ra sự kiện, hoạt động trước đó có liên quan đến sản phẩm của Diageo.</li>
-              <li>Nếu điểm bán là nhà hàng, có thể đăng hình ảnh sự kiện trên menu, tencard đặt tại bàn, quầy lễ tân, standee hoặc backdrop.</li>
+              <li>Trưng bày 4 tấm hình/outlet : 1 tấm chụp toàn cảnh cửa hàng có địa chỉ, 1 tấm chụp mặt chính của cửa hàng, 2 tấm chụp khu trưng bày có sản phẩm.</li>
               <li>Hình ảnh rõ nét, thể hiện rõ tên Outlet đã đăng ký, ngày tháng năm diễn ra chương trình, và địa điểm tại outlet đã đăng ký.</li>
             </ul>
             <div class="info-note">
@@ -118,61 +117,83 @@
             <div class="error-message" style="display: none;"></div>
           </div>
 
-          <!-- Tên chương trình (Nhập) -->
-          <div class="form-group" id="group-program-name">
-            <label class="form-label" for="programName">
-              Tên chương trình sự kiện <span class="required">*</span>
+          <!-- Loại hoạt động (Chọn) -->
+          <div class="form-group" id="group-activity-type">
+            <label class="form-label">
+              Loại hoạt động <span class="required">*</span>
             </label>
-            <div class="input-wrapper">
-              <i class="fa-solid fa-gift input-icon"></i>
-              <input 
-                type="text" 
-                id="programName" 
-                name="programName" 
-                class="input-control" 
-                placeholder="Nhập tên chương trình sự kiện diễn ra..."
-                required
-              >
+            <div class="selector-grid">
+              <label class="selector-card radio-card checked" for="actEvent">
+                <input type="radio" name="activityType" id="actEvent" value="Event" checked style="display:none;">
+                <div class="selector-indicator"></div>
+                <span class="selector-text"><i class="fa-solid fa-calendar-days"></i> Tổ chức Event</span>
+              </label>
+              <label class="selector-card radio-card" for="actDisplay">
+                <input type="radio" name="activityType" id="actDisplay" value="Display" style="display:none;">
+                <div class="selector-indicator"></div>
+                <span class="selector-text"><i class="fa-solid fa-crop-simple"></i> Trưng bày (Display)</span>
+              </label>
             </div>
-            <div class="error-message" style="display: none;"></div>
           </div>
 
-          <div class="flex-row">
-            
-            <div class="form-group half-width" id="group-start-date">
-              <label class="form-label" for="startDate">
-                Ngày bắt đầu diễn ra <span class="required">*</span>
+          <!-- Event Specific Fields (Hidden when Display is selected) -->
+          <div id="eventFieldsContainer">
+            <!-- Tên chương trình (Nhập) -->
+            <div class="form-group" id="group-program-name">
+              <label class="form-label" for="programName">
+                Tên chương trình sự kiện <span class="required">*</span>
               </label>
               <div class="input-wrapper">
-                <i class="fa-solid fa-calendar-plus input-icon"></i>
+                <i class="fa-solid fa-gift input-icon"></i>
                 <input 
-                  type="date" 
-                  id="startDate" 
-                  name="startDate" 
-                  class="input-control"
+                  type="text" 
+                  id="programName" 
+                  name="programName" 
+                  class="input-control" 
+                  placeholder="Nhập tên chương trình sự kiện diễn ra..."
                   required
                 >
               </div>
               <div class="error-message" style="display: none;"></div>
             </div>
 
-            <div class="form-group half-width" id="group-end-date">
-              <label class="form-label" for="endDate">
-                Ngày kết thúc diễn ra <span class="required">*</span>
-              </label>
-              <div class="input-wrapper">
-                <i class="fa-solid fa-calendar-check input-icon"></i>
-                <input 
-                  type="date" 
-                  id="endDate" 
-                  name="endDate" 
-                  class="input-control"
-                  required
-                >
+            <div class="flex-row">
+              
+              <div class="form-group half-width" id="group-start-date">
+                <label class="form-label" for="startDate">
+                  Ngày bắt đầu diễn ra <span class="required">*</span>
+                </label>
+                <div class="input-wrapper">
+                  <i class="fa-solid fa-calendar-plus input-icon"></i>
+                  <input 
+                    type="date" 
+                    id="startDate" 
+                    name="startDate" 
+                    class="input-control"
+                    required
+                  >
+                </div>
+                <div class="error-message" style="display: none;"></div>
               </div>
-              <div class="error-message" style="display: none;"></div>
-            </div>
 
+              <div class="form-group half-width" id="group-end-date">
+                <label class="form-label" for="endDate">
+                  Ngày kết thúc diễn ra <span class="required">*</span>
+                </label>
+                <div class="input-wrapper">
+                  <i class="fa-solid fa-calendar-check input-icon"></i>
+                  <input 
+                    type="date" 
+                    id="endDate" 
+                    name="endDate" 
+                    class="input-control"
+                    required
+                  >
+                </div>
+                <div class="error-message" style="display: none;"></div>
+              </div>
+
+            </div>
           </div>
 
         </div>
@@ -425,6 +446,7 @@
               <thead>
                 <tr>
                   <th>Tên Outlet</th>
+                  <th>Tên chương trình</th>
                   <th>Thời gian</th>
                   <th>Loại hình</th>
                   <th>Nội dung tóm tắt</th>
