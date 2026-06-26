@@ -66,7 +66,7 @@
             <strong>Điều kiện hợp lệ:</strong>
             <ul>
               <li>Hình ảnh event/activation phải đăng <strong>tối thiểu 4 tấm hình</strong> diễn ra sự kiện, hoạt động trước đó có liên quan đến sản phẩm của Diageo.</li>
-              <li>Trưng bày 4 tấm hình/outlet : 1 tấm chụp toàn cảnh cửa hàng có địa chỉ, 1 tấm chụp mặt chính của cửa hàng, 2 tấm chụp khu trưng bày có sản phẩm.</li>
+              <li>Trưng bày/event 4 tấm hình/outlet : 1 tấm chụp toàn cảnh cửa hàng có địa chỉ, 1 tấm chụp mặt chính của cửa hàng, 2 tấm chụp khu trưng bày có sản phẩm hoặc event/activation có liên quan đến sản phẩm của Diageo.</li>
               <li>Hình ảnh rõ nét, thể hiện rõ tên Outlet đã đăng ký, ngày tháng năm diễn ra chương trình, và địa điểm tại outlet đã đăng ký.</li>
             </ul>
             <div class="info-note">
@@ -274,39 +274,72 @@
         <!-- ==================== STEP 3: EVIDENCE & CONFIRMATION ==================== -->
         <div class="form-step" data-step="3">
           
-          <div class="form-group" id="group-gallery">
-            <label class="form-label">
-              Hình ảnh chương trình sự kiện diễn ra <span class="required">*</span>
-            </label>
-            <p class="form-label-desc">Tải lên tối thiểu 4 bức ảnh rõ nét thể hiện hoạt động thực tế.</p>
+          <!-- Split Image Upload Gallery (Used for both Event and Display) -->
+          <div id="group-gallery-split">
             
-            <!-- Upload Drop Zone -->
-            <div class="upload-container" id="uploadZone">
-              <img src="logo.png" alt="Logo Ontrade" class="upload-logo-img">
-              <h3 class="upload-title">Kéo & thả ảnh vào đây</h3>
-              <p class="upload-subtitle">hoặc bấm để duyệt tệp tin từ thiết bị</p>
-              <span class="upload-btn">
-                <i class="fa-regular fa-images"></i> Chọn tệp ảnh
-              </span>
-              <input 
-                type="file" 
-                id="imageFiles" 
-                class="file-input" 
-                multiple 
-                accept="image/*"
-              >
-            </div>
-            
-            <!-- Counter details -->
-            <div class="upload-counter">
-              <span class="counter-text" id="counterText">Chưa tải ảnh lên</span>
-              <span class="counter-badge" id="counterBadge">0 ảnh</span>
+            <!-- Slot 1: Toàn cảnh cửa hàng -->
+            <div class="form-group" id="group-gallery-display1" style="margin-bottom: 20px;">
+              <label class="form-label">
+                1. Ảnh toàn cảnh cửa hàng (có địa chỉ) <span class="required">*</span>
+              </label>
+              <p class="form-label-desc">Chụp từ xa để thấy rõ biển hiệu và số nhà/địa chỉ cửa hàng (tối thiểu 1 ảnh, có thể chụp nhiều hơn).</p>
+              <div class="upload-container" id="uploadZoneDisplay1">
+                <img src="logo.png" alt="Logo Ontrade" class="upload-logo-img">
+                <h3 class="upload-title">Kéo & thả ảnh toàn cảnh vào đây</h3>
+                <p class="upload-subtitle">hoặc bấm để duyệt tệp tin</p>
+                <span class="upload-btn"><i class="fa-regular fa-images"></i> Chọn ảnh toàn cảnh</span>
+                <input type="file" id="imageFilesDisplay1" class="file-input" multiple accept="image/*">
+              </div>
+              <div class="upload-counter">
+                <span class="counter-text" id="counterTextDisplay1">Chưa tải ảnh lên</span>
+                <span class="counter-badge" id="counterBadgeDisplay1">0 ảnh</span>
+              </div>
+              <div class="preview-grid" id="previewGridDisplay1"></div>
+              <div class="error-message" style="display: none;"></div>
             </div>
 
-            <!-- Preview Grid -->
-            <div class="preview-grid" id="previewGrid"></div>
-            
-            <div class="error-message" id="gallery-error" style="display: none;"></div>
+            <!-- Slot 2: Mặt chính cửa hàng -->
+            <div class="form-group" id="group-gallery-display2" style="margin-bottom: 20px;">
+              <label class="form-label">
+                2. Ảnh mặt chính của cửa hàng <span class="required">*</span>
+              </label>
+              <p class="form-label-desc">Chụp trực diện mặt tiền cửa hàng (tối thiểu 1 ảnh, có thể chụp nhiều hơn).</p>
+              <div class="upload-container" id="uploadZoneDisplay2">
+                <img src="logo.png" alt="Logo Ontrade" class="upload-logo-img">
+                <h3 class="upload-title">Kéo & thả ảnh mặt chính vào đây</h3>
+                <p class="upload-subtitle">hoặc bấm để duyệt tệp tin</p>
+                <span class="upload-btn"><i class="fa-regular fa-images"></i> Chọn ảnh mặt chính</span>
+                <input type="file" id="imageFilesDisplay2" class="file-input" multiple accept="image/*">
+              </div>
+              <div class="upload-counter">
+                <span class="counter-text" id="counterTextDisplay2">Chưa tải ảnh lên</span>
+                <span class="counter-badge" id="counterBadgeDisplay2">0 ảnh</span>
+              </div>
+              <div class="preview-grid" id="previewGridDisplay2"></div>
+              <div class="error-message" style="display: none;"></div>
+            </div>
+
+            <!-- Slot 3: Khu trưng bày / Sự kiện / Activation -->
+            <div class="form-group" id="group-gallery-display3" style="margin-bottom: 20px;">
+              <label class="form-label">
+                3. Ảnh khu trưng bày hoặc Sự kiện/Activation <span class="required">*</span>
+              </label>
+              <p class="form-label-desc">Chụp cận cảnh quầy kệ trưng bày hoặc hình ảnh sự kiện, hoạt động liên quan đến sản phẩm Diageo (tối thiểu 2 ảnh, có thể chụp nhiều hơn).</p>
+              <div class="upload-container" id="uploadZoneDisplay3">
+                <img src="logo.png" alt="Logo Ontrade" class="upload-logo-img">
+                <h3 class="upload-title">Kéo & thả ảnh trưng bày/sự kiện vào đây</h3>
+                <p class="upload-subtitle">hoặc bấm để duyệt tệp tin</p>
+                <span class="upload-btn"><i class="fa-regular fa-images"></i> Chọn ảnh trưng bày/sự kiện</span>
+                <input type="file" id="imageFilesDisplay3" class="file-input" multiple accept="image/*">
+              </div>
+              <div class="upload-counter">
+                <span class="counter-text" id="counterTextDisplay3">Chưa tải ảnh lên</span>
+                <span class="counter-badge" id="counterBadgeDisplay3">0 ảnh</span>
+              </div>
+              <div class="preview-grid" id="previewGridDisplay3"></div>
+              <div class="error-message" style="display: none;"></div>
+            </div>
+
           </div>
 
           <div class="form-group" id="group-guarantee">

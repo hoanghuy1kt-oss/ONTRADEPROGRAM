@@ -63,6 +63,10 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentStep = 1;
   let totalSteps = 3;
   let uploadedImages = []; // Backing state for files
+  let uploadedImagesDisplay1 = []; // Toàn cảnh
+  let uploadedImagesDisplay2 = []; // Mặt chính
+  let uploadedImagesDisplay3 = []; // Khu trưng bày
+  let eventGalleryControl, displayGallery1Control, displayGallery2Control, displayGallery3Control;
 
   // Autocomplete and database variables
   const outletNameInput = document.getElementById('outletName');
@@ -262,18 +266,10 @@ document.addEventListener('DOMContentLoaded', () => {
       eventFieldsContainer.style.display = 'none';
       totalSteps = 2;
       document.querySelector('[data-target-step="2"]').style.display = 'none';
-      
-      // Update Step 3 Upload labels for Display
-      document.querySelector('#group-gallery .form-label').innerHTML = 'Hình ảnh Trưng bày <span class="required">*</span>';
-      document.querySelector('#group-gallery .form-label-desc').textContent = 'Tải lên tối thiểu 4 bức ảnh rõ nét trưng bày thực tế tại Outlet.';
     } else {
       eventFieldsContainer.style.display = 'block';
       totalSteps = 3;
       document.querySelector('[data-target-step="2"]').style.display = 'flex';
-      
-      // Restore default Step 3 labels for Event
-      document.querySelector('#group-gallery .form-label').innerHTML = 'Hình ảnh chương trình sự kiện diễn ra <span class="required">*</span>';
-      document.querySelector('#group-gallery .form-label-desc').textContent = 'Tải lên tối thiểu 4 bức ảnh rõ nét thể hiện hoạt động thực tế.';
     }
     
     currentStep = 1;
@@ -533,16 +529,34 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     else if ((step === 3 && !isDisplay) || (step === 2 && isDisplay)) {
-      // Validate Gallery Images (At least 4)
-      if (uploadedImages.length < 4) {
-        const errorMsgLabel = isDisplay ? 'Hình ảnh trưng bày chưa đủ điều kiện. Cần tải lên tối thiểu 4 ảnh.' : 'Hình ảnh sự kiện chưa đủ điều kiện. Cần tải lên tối thiểu 4 ảnh.';
-        showError('group-gallery', `${errorMsgLabel} (Hiện tại: ${uploadedImages.length} ảnh).`);
-        galleryError.textContent = `Vui lòng đăng thêm tối thiểu ${4 - uploadedImages.length} ảnh nữa để đáp ứng điều kiện CM.`;
-        galleryError.style.display = 'flex';
-        isValid = false;
+      let isDisplayImagesValid = true;
+      
+      // Validate Slot 1: Toàn cảnh (min 1)
+      if (uploadedImagesDisplay1.length < 1) {
+        showError('group-gallery-display1', 'Cần tải lên tối thiểu 1 ảnh toàn cảnh cửa hàng có địa chỉ.');
+        isDisplayImagesValid = false;
       } else {
-        clearError('group-gallery');
-        galleryError.style.display = 'none';
+        clearError('group-gallery-display1');
+      }
+      
+      // Validate Slot 2: Mặt chính (min 1)
+      if (uploadedImagesDisplay2.length < 1) {
+        showError('group-gallery-display2', 'Cần tải lên tối thiểu 1 ảnh mặt chính của cửa hàng.');
+        isDisplayImagesValid = false;
+      } else {
+        clearError('group-gallery-display2');
+      }
+      
+      // Validate Slot 3: Khu trưng bày / Sự kiện (min 2)
+      if (uploadedImagesDisplay3.length < 2) {
+        showError('group-gallery-display3', 'Cần tải lên tối thiểu 2 ảnh khu trưng bày hoặc Sự kiện/Activation.');
+        isDisplayImagesValid = false;
+      } else {
+        clearError('group-gallery-display3');
+      }
+      
+      if (!isDisplayImagesValid) {
+        isValid = false;
       }
       
       // Validate Guarantee Radio
@@ -579,145 +593,192 @@ document.addEventListener('DOMContentLoaded', () => {
   // ----------------------------------------------------
   // 5. Drag & Drop File Upload and Preview Management
   // ----------------------------------------------------
-  // Trigger file selection dialog
-  uploadZone.addEventListener('click', () => {
-    imageFilesInput.click();
-  });
-  
-  // Handle dragging states
-  ['dragenter', 'dragover'].forEach(eventName => {
-    uploadZone.addEventListener(eventName, (e) => {
-      e.preventDefault();
-      uploadZone.classList.add('dragover');
-    }, false);
-  });
-  
-  ['dragleave', 'drop'].forEach(eventName => {
-    uploadZone.addEventListener(eventName, (e) => {
-      e.preventDefault();
-      uploadZone.classList.remove('dragover');
-    }, false);
-  });
-  
-  // Handle drop files
-  uploadZone.addEventListener('drop', (e) => {
-    const dt = e.dataTransfer;
-    const files = dt.files;
-    handleSelectedFiles(files);
-  });
-  
-  // Handle click upload files
-  imageFilesInput.addEventListener('change', (e) => {
-    const files = e.target.files;
-    handleSelectedFiles(files);
-  });
-  
-  function handleSelectedFiles(files) {
-    if (files.length === 0) return;
-    
-    let addedCount = 0;
-    let ignoredCount = 0;
-    
-    Array.from(files).forEach(file => {
-      // Ensure file is image
-      if (file.type.startsWith('image/')) {
-        // Prevent duplicate file name/size (basic check)
-        const isDuplicate = uploadedImages.some(img => img.name === file.name && img.size === file.size);
-        if (!isDuplicate) {
-          uploadedImages.push(file);
-          addedCount++;
+  // 5. Drag & Drop File Upload and Preview Management
+  // ----------------------------------------------------
+  function setupUploadZone(zoneId, inputId, filesStore, counterTextId, counterBadgeId, previewGridId, groupId, minCount) {
+    const zone = document.getElementById(zoneId);
+    const input = document.getElementById(inputId);
+    const counterText = document.getElementById(counterTextId);
+    const counterBadge = document.getElementById(counterBadgeId);
+    const previewGrid = document.getElementById(previewGridId);
+
+    if (!zone || !input) return null;
+
+    zone.addEventListener('click', () => {
+      input.click();
+    });
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+      zone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        zone.classList.add('dragover');
+      }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      zone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        zone.classList.remove('dragover');
+      }, false);
+    });
+
+    zone.addEventListener('drop', (e) => {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      handleFiles(files);
+    });
+
+    input.addEventListener('change', (e) => {
+      handleFiles(e.target.files);
+    });
+
+    function handleFiles(files) {
+      if (files.length === 0) return;
+      let addedCount = 0;
+      let ignoredCount = 0;
+
+      Array.from(files).forEach(file => {
+        if (file.type.startsWith('image/')) {
+          const isDuplicate = filesStore.some(img => img.name === file.name && img.size === file.size);
+          if (!isDuplicate) {
+            filesStore.push(file);
+            addedCount++;
+          } else {
+            ignoredCount++;
+          }
         } else {
           ignoredCount++;
         }
-      } else {
-        ignoredCount++;
-      }
-    });
-    
-    if (addedCount > 0) {
-      showToast('Đã thêm ảnh', `Tải lên thành công ${addedCount} ảnh minh chứng.`, 'info');
-      renderPreviews();
-      // Re-validate if in Step 3
-      if (currentStep === 3) {
-        validateStep(3);
-      }
-    }
-    
-    if (ignoredCount > 0) {
-      showToast('Bỏ qua tệp tin', `${ignoredCount} tệp không hợp lệ hoặc đã trùng lặp.`, 'warning');
-    }
-    
-    // Clear input value so same files can be chosen again if needed
-    imageFilesInput.value = '';
-  }
-  
-  function renderPreviews() {
-    // Clear grid
-    previewGrid.innerHTML = '';
-    
-    if (uploadedImages.length === 0) {
-      counterText.textContent = 'Chưa tải ảnh lên';
-      counterBadge.textContent = '0 ảnh';
-      counterBadge.className = 'counter-badge';
-      return;
-    }
-    
-    // Update counters
-    counterText.textContent = `Đã tải lên ${uploadedImages.length} ảnh minh chứng`;
-    counterBadge.textContent = `${uploadedImages.length} ảnh`;
-    
-    if (uploadedImages.length >= 4) {
-      counterBadge.className = 'counter-badge success-badge';
-    } else {
-      counterBadge.className = 'counter-badge';
-    }
-    
-    // Build preview items
-    uploadedImages.forEach((file, index) => {
-      const previewItem = document.createElement('div');
-      previewItem.className = 'preview-item';
-      
-      const img = document.createElement('img');
-      // Create temporary object URL for local display without server uploads
-      const objectUrl = URL.createObjectURL(file);
-      img.src = objectUrl;
-      img.alt = file.name;
-      
-      // Revoke URL after image loaded to release memory
-      img.onload = () => {
-        URL.revokeObjectURL(objectUrl);
-      };
-      
-      const overlay = document.createElement('div');
-      overlay.className = 'preview-item-overlay';
-      
-      const deleteBtn = document.createElement('button');
-      deleteBtn.type = 'button';
-      deleteBtn.className = 'preview-delete-btn';
-      deleteBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
-      deleteBtn.title = 'Xóa ảnh này';
-      
-      deleteBtn.addEventListener('click', (e) => {
-        e.stopPropagation(); // Avoid triggering parent actions
-        removeFile(index);
       });
-      
-      overlay.appendChild(deleteBtn);
-      previewItem.appendChild(img);
-      previewItem.appendChild(overlay);
-      previewGrid.appendChild(previewItem);
-    });
-  }
-  
-  function removeFile(index) {
-    uploadedImages.splice(index, 1);
-    renderPreviews();
-    showToast('Đã xóa ảnh', 'Đã gỡ bỏ ảnh minh chứng.', 'info');
-    // Re-validate if in Step 3
-    if (currentStep === 3) {
-      validateStep(3);
+
+      if (addedCount > 0) {
+        showToast('Đã thêm ảnh', `Tải lên thành công ${addedCount} ảnh.`, 'info');
+        renderPreviews();
+        
+        const isDisplay = document.querySelector('input[name="activityType"]:checked').value === 'Display';
+        const finalStep = isDisplay ? 2 : 3;
+        if (currentStep === finalStep) {
+          validateStep(finalStep);
+        }
+      }
+      if (ignoredCount > 0) {
+        showToast('Bỏ qua tệp', `${ignoredCount} tệp không hợp lệ hoặc đã trùng lặp.`, 'warning');
+      }
+      input.value = '';
     }
+
+    function renderPreviews() {
+      previewGrid.innerHTML = '';
+      if (filesStore.length === 0) {
+        counterText.textContent = 'Chưa tải ảnh lên';
+        counterBadge.textContent = '0 ảnh';
+        counterBadge.className = 'counter-badge';
+        return;
+      }
+
+      counterText.textContent = `Đã tải lên ${filesStore.length} ảnh`;
+      counterBadge.textContent = `${filesStore.length} ảnh`;
+
+      if (filesStore.length >= minCount) {
+        counterBadge.className = 'counter-badge success-badge';
+      } else {
+        counterBadge.className = 'counter-badge';
+      }
+
+      filesStore.forEach((file, index) => {
+        const previewItem = document.createElement('div');
+        previewItem.className = 'preview-item';
+
+        const img = document.createElement('img');
+        const objectUrl = URL.createObjectURL(file);
+        img.src = objectUrl;
+        img.alt = file.name;
+        img.onload = () => {
+          URL.revokeObjectURL(objectUrl);
+        };
+
+        const overlay = document.createElement('div');
+        overlay.className = 'preview-item-overlay';
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'preview-delete-btn';
+        deleteBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
+        deleteBtn.title = 'Xóa ảnh này';
+
+        deleteBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          filesStore.splice(index, 1);
+          renderPreviews();
+          showToast('Đã xóa ảnh', 'Đã gỡ bỏ ảnh.', 'info');
+          
+          const isDisplay = document.querySelector('input[name="activityType"]:checked').value === 'Display';
+          const finalStep = isDisplay ? 2 : 3;
+          if (currentStep === finalStep) {
+            validateStep(finalStep);
+          }
+        });
+
+        overlay.appendChild(deleteBtn);
+        previewItem.appendChild(img);
+        previewItem.appendChild(overlay);
+        previewGrid.appendChild(previewItem);
+      });
+    }
+
+    return {
+      render: renderPreviews,
+      clear: () => {
+        filesStore.length = 0;
+        renderPreviews();
+      }
+    };
   }
+
+  // Initialize upload zones
+  eventGalleryControl = setupUploadZone(
+    'uploadZone',
+    'imageFiles',
+    uploadedImages,
+    'counterText',
+    'counterBadge',
+    'previewGrid',
+    'group-gallery',
+    4
+  );
+
+  displayGallery1Control = setupUploadZone(
+    'uploadZoneDisplay1',
+    'imageFilesDisplay1',
+    uploadedImagesDisplay1,
+    'counterTextDisplay1',
+    'counterBadgeDisplay1',
+    'previewGridDisplay1',
+    'group-gallery-display1',
+    1
+  );
+
+  displayGallery2Control = setupUploadZone(
+    'uploadZoneDisplay2',
+    'imageFilesDisplay2',
+    uploadedImagesDisplay2,
+    'counterTextDisplay2',
+    'counterBadgeDisplay2',
+    'previewGridDisplay2',
+    'group-gallery-display2',
+    1
+  );
+
+  displayGallery3Control = setupUploadZone(
+    'uploadZoneDisplay3',
+    'imageFilesDisplay3',
+    uploadedImagesDisplay3,
+    'counterTextDisplay3',
+    'counterBadgeDisplay3',
+    'previewGridDisplay3',
+    'group-gallery-display3',
+    2
+  );
 
   // ----------------------------------------------------
   // 6. Toast System
@@ -830,11 +891,13 @@ document.addEventListener('DOMContentLoaded', () => {
   function finishSubmission(outletVal, programVal, startVal, endVal, typesVal) {
     resetSubmitBtn();
     
+    const totalCount = uploadedImagesDisplay1.length + uploadedImagesDisplay2.length + uploadedImagesDisplay3.length;
+    
     document.getElementById('sumOutletName').textContent = outletVal;
     document.getElementById('sumProgramName').textContent = programVal;
     document.getElementById('sumEventTime').textContent = startVal && endVal ? `${formatDate(startVal)} - ${formatDate(endVal)}` : 'Trưng bày thực tế';
     document.getElementById('sumEventType').textContent = truncateText(typesVal, 50);
-    document.getElementById('sumImages').textContent = `${uploadedImages.length} ảnh đã xác thực`;
+    document.getElementById('sumImages').textContent = `${totalCount} ảnh đã xác thực`;
     
     successOverlay.classList.add('active');
     triggerConfetti();
@@ -850,8 +913,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Show processing toast
     showToast('Đang xử lý', 'Đang nén hình ảnh và mã hóa dữ liệu...', 'info', 2000);
     
+    const filesToCompress = [
+      ...uploadedImagesDisplay1,
+      ...uploadedImagesDisplay2,
+      ...uploadedImagesDisplay3
+    ];
+    
     // Compress images asynchronously
-    const compressPromises = uploadedImages.map(file => compressImage(file));
+    const compressPromises = filesToCompress.map(file => compressImage(file));
     
     Promise.all(compressPromises)
       .then(base64Images => {
@@ -998,10 +1067,11 @@ document.addEventListener('DOMContentLoaded', () => {
       defaultEventRadio.closest('.selector-card').classList.add('checked');
       handleActivityTypeChange('Event');
     }
-    
     // Reset file manager state
-    uploadedImages = [];
-    renderPreviews();
+    if (eventGalleryControl) eventGalleryControl.clear();
+    if (displayGallery1Control) displayGallery1Control.clear();
+    if (displayGallery2Control) displayGallery2Control.clear();
+    if (displayGallery3Control) displayGallery3Control.clear();
     
     // Clear validation error borders
     document.querySelectorAll('.form-group').forEach(group => {
