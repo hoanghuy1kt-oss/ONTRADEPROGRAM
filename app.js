@@ -262,14 +262,29 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   function handleActivityTypeChange(type) {
+    const labelSlot3 = document.getElementById('labelSlot3');
+    const descSlot3 = document.getElementById('descSlot3');
+    const uploadTitleSlot3 = document.getElementById('uploadTitleSlot3');
+    const uploadBtnSlot3 = document.getElementById('uploadBtnSlot3');
+
     if (type === 'Display') {
       eventFieldsContainer.style.display = 'none';
       totalSteps = 2;
       document.querySelector('[data-target-step="2"]').style.display = 'none';
+      
+      if (labelSlot3) labelSlot3.innerHTML = '3. Ảnh khu trưng bày <span class="required">*</span>';
+      if (descSlot3) descSlot3.textContent = 'Chụp cận cảnh quầy kệ/khu trưng bày sản phẩm Diageo (tối thiểu 2 ảnh, có thể chụp nhiều hơn).';
+      if (uploadTitleSlot3) uploadTitleSlot3.textContent = 'Kéo & thả ảnh trưng bày vào đây';
+      if (uploadBtnSlot3) uploadBtnSlot3.innerHTML = '<i class="fa-regular fa-images"></i> Chọn ảnh trưng bày';
     } else {
       eventFieldsContainer.style.display = 'block';
       totalSteps = 3;
       document.querySelector('[data-target-step="2"]').style.display = 'flex';
+      
+      if (labelSlot3) labelSlot3.innerHTML = '3. Ảnh Sự kiện/Activation <span class="required">*</span>';
+      if (descSlot3) descSlot3.textContent = 'Chụp cận cảnh hình ảnh sự kiện, hoạt động liên quan đến sản phẩm Diageo (tối thiểu 2 ảnh, có thể chụp nhiều hơn).';
+      if (uploadTitleSlot3) uploadTitleSlot3.textContent = 'Kéo & thả ảnh sự kiện vào đây';
+      if (uploadBtnSlot3) uploadBtnSlot3.innerHTML = '<i class="fa-regular fa-images"></i> Chọn ảnh sự kiện';
     }
     
     currentStep = 1;
@@ -549,7 +564,8 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Validate Slot 3: Khu trưng bày / Sự kiện (min 2)
       if (uploadedImagesDisplay3.length < 2) {
-        showError('group-gallery-display3', 'Cần tải lên tối thiểu 2 ảnh khu trưng bày hoặc Sự kiện/Activation.');
+        const errorMsg = isDisplay ? 'Cần tải lên tối thiểu 2 ảnh khu trưng bày có sản phẩm.' : 'Cần tải lên tối thiểu 2 ảnh sự kiện/activation.';
+        showError('group-gallery-display3', errorMsg);
         isDisplayImagesValid = false;
       } else {
         clearError('group-gallery-display3');
