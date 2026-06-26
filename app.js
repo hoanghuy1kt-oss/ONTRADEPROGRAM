@@ -702,18 +702,19 @@ document.addEventListener('DOMContentLoaded', () => {
         img.src = event.target.result;
         img.onload = () => {
           const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 320; // 320px is perfect for report thumbnails
-          const MAX_HEIGHT = 320;
+          
+          // Use high resolution (Full HD 1920px) to keep images very sharp and clear
+          const MAX_WIDTH = 1920; 
+          const MAX_HEIGHT = 1920;
           let width = img.width;
           let height = img.height;
 
-          if (width > height) {
-            if (width > MAX_WIDTH) {
+          // Only scale down if the image exceeds the maximum dimensions
+          if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+            if (width > height) {
               height *= MAX_WIDTH / width;
               width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
+            } else {
               width *= MAX_HEIGHT / height;
               height = MAX_HEIGHT;
             }
@@ -722,8 +723,15 @@ document.addEventListener('DOMContentLoaded', () => {
           canvas.width = width;
           canvas.height = height;
           const ctx = canvas.getContext('2d');
+          
+          // Enable high-quality image smoothing to prevent blurriness during resize
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          
           ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', 0.65));
+          
+          // Compress to JPEG with 85% quality to keep it crystal clear and well under 2MB (typically 300KB - 800KB)
+          resolve(canvas.toDataURL('image/jpeg', 0.85));
         };
         img.onerror = (err) => reject(err);
       };
