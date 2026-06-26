@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cập Nhật Thông Tin Sự Kiện Event Activation | Diageo On-Trade</title>
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="Trang cập nhật hình ảnh sự kiện, hoạt động của các điểm bán đã ký hợp đồng On-Trade với Diageo. Vui lòng cập nhật đầy đủ thông tin và tối thiểu 4 tấm hình sự kiện.">
+  <meta name="robots" content="index, follow">
+  <link rel="icon" type="image/png" href="logo.png">
+  
+  <!-- FontAwesome for Premium Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+
+  <!-- PptxGenJS for PowerPoint Exports -->
+  <script src="https://cdn.jsdelivr.net/gh/gitbrent/PptxGenJS@3.12.0/dist/pptxgen.bundle.js"></script>
+
+  <!-- ExcelJS for Excel XLSX Exports with Images -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+
+  <!-- Firebase App & Services CDNs (Compat version) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+</head>
+<body>
+
+  <!-- Ambient background elements -->
+  <div class="ambient-bg">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Main Web App Container -->
+  <main class="app-container">
+    
+    <div class="form-card">
+      <div id="salesFormContainer">
+        <!-- Premium Header Section -->
+        <header class="form-header">
+        <div class="brand-badge">
+          <img src="logo.png" alt="Logo" class="brand-badge-img">
+          <span>Diageo On-Trade Contracted Program</span>
+        </div>
+        <h1 class="form-title" id="formTitle">Cập Nhật Thông Tin Sự Kiện Event Activation</h1>
+        <p class="form-subtitle">Cổng thông tin dành cho Sales Team cập nhật hình ảnh hoạt động và sự kiện tại các điểm bán đã ký kết hợp đồng.</p>
+      </header>
+
+      <!-- Accordion Box for Terms & Conditions -->
+      <section class="info-accordion" id="infoAccordion">
+        <div class="info-accordion-header" id="accordionHeader">
+          <span class="info-accordion-title">
+            <i class="fa-solid fa-circle-info"></i>
+            Điều kiện & Lưu ý quan trọng khi thanh toán
+          </span>
+          <i class="fa-solid fa-chevron-down info-accordion-icon"></i>
+        </div>
+        <div class="info-accordion-content" id="accordionContent">
+          <div class="info-body">
+            <strong>Điều kiện hợp lệ:</strong>
+            <ul>
+              <li>Hình ảnh event/activation phải đăng <strong>tối thiểu 4 tấm hình</strong> diễn ra sự kiện, hoạt động trước đó có liên quan đến sản phẩm của Diageo.</li>
+              <li>Nếu điểm bán là nhà hàng, có thể đăng hình ảnh sự kiện trên menu, tencard đặt tại bàn, quầy lễ tân, standee hoặc backdrop.</li>
+              <li>Hình ảnh rõ nét, thể hiện rõ tên chương trình đã đăng ký, ngày tháng năm diễn ra chương trình, và địa điểm tại outlet đã đăng ký.</li>
+            </ul>
+            <div class="info-note">
+              <i class="fa-solid fa-triangle-exclamation"></i>
+              <strong>Lưu ý từ CM:</strong> Sales Team cần submit hình ảnh trước khi thực hiện thanh toán. Nếu CM không nhận được đầy đủ hình ảnh hợp lý, hợp lệ thì mặc định sẽ dời thanh toán cho outlet sang kỳ thanh toán tiếp theo ngay khi có đầy đủ hình ảnh của các khoản đã đầu tư.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Stepper Capsules Indicator -->
+      <div class="stepper-capsules">
+        <div class="step-capsule active" data-target-step="1"></div>
+        <div class="step-capsule" data-target-step="2"></div>
+        <div class="step-capsule" data-target-step="3"></div>
+      </div>
+      <div class="step-info-text">
+        <span class="step-number-badge" id="stepNumberBadge">Bước 1/3</span>
+        <span class="step-current-label" id="currentStepLabel">Thông tin chung</span>
+      </div>
+
+      <!-- Main Form Element -->
+      <form id="activationForm" autocomplete="off" novalidate>
+        
+        <!-- ==================== STEP 1: GENERAL INFO ==================== -->
+        <div class="form-step active" data-step="1">
+          
+          <div class="form-group" id="group-event-name" style="position: relative;">
+            <label class="form-label" for="eventName">
+              Tên chương trình sự kiện đăng ký <span class="required">*</span>
+            </label>
+            <div class="input-wrapper">
+              <i class="fa-solid fa-magnifying-glass input-icon"></i>
+              <input 
+                type="text" 
+                id="eventName" 
+                name="eventName" 
+                class="input-control" 
+                placeholder="Gõ hoặc chọn chương trình đã duyệt..."
+                required
+                autocomplete="off"
+              >
+              <i class="fa-solid fa-chevron-down dropdown-arrow-icon" style="position: absolute; right: 14px; color: var(--text-muted); cursor: pointer; pointer-events: none; font-size: 0.75rem;"></i>
+            </div>
+            <!-- Searchable Dropdown List -->
+            <div class="autocomplete-list" id="autocompleteList"></div>
+            <div class="error-message" style="display: none;"></div>
+          </div>
+
+          <div class="flex-row">
+            
+            <div class="form-group half-width" id="group-start-date">
+              <label class="form-label" for="startDate">
+                Ngày bắt đầu diễn ra <span class="required">*</span>
+              </label>
+              <div class="input-wrapper">
+                <i class="fa-solid fa-calendar-plus input-icon"></i>
+                <input 
+                  type="date" 
+                  id="startDate" 
+                  name="startDate" 
+                  class="input-control"
+                  required
+                >
+              </div>
+              <div class="error-message" style="display: none;"></div>
+            </div>
+
+            <div class="form-group half-width" id="group-end-date">
+              <label class="form-label" for="endDate">
+                Ngày kết thúc diễn ra <span class="required">*</span>
+              </label>
+              <div class="input-wrapper">
+                <i class="fa-solid fa-calendar-check input-icon"></i>
+                <input 
+                  type="date" 
+                  id="endDate" 
+                  name="endDate" 
+                  class="input-control"
+                  required
+                >
+              </div>
+              <div class="error-message" style="display: none;"></div>
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- ==================== STEP 2: CATEGORY & CONTENT ==================== -->
+        <div class="form-step" data-step="2">
+          
+          <div class="form-group" id="group-event-type">
+            <label class="form-label">
+              Loại hình chương trình <span class="required">*</span>
+            </label>
+            <p class="form-label-desc">Chọn một hoặc nhiều loại hình chương trình áp dụng thực tế tại điểm bán.</p>
+            <div class="selector-grid full-grid">
+              
+              <label class="selector-card checkbox-card" for="typeCombo">
+                <input type="checkbox" name="eventType" id="typeCombo" value="Gói combo sản phẩm" style="display:none;">
+                <div class="selector-indicator"></div>
+                <span class="selector-text">Gói combo sản phẩm (Mua sản phẩm tặng sản phẩm, mua sản phẩm tặng thức ăn,..)</span>
+              </label>
+              
+              <label class="selector-card checkbox-card" for="typePromo">
+                <input type="checkbox" name="eventType" id="typePromo" value="Khuyến mãi, giảm giá" style="display:none;">
+                <div class="selector-indicator"></div>
+                <span class="selector-text">Khuyến mãi, giảm giá</span>
+              </label>
+
+              <label class="selector-card checkbox-card" for="typeArtist">
+                <input type="checkbox" name="eventType" id="typeArtist" value="Sự kiện DJ, ca sĩ,.." style="display:none;">
+                <div class="selector-indicator"></div>
+                <span class="selector-text">Sự kiện DJ, ca sĩ,..</span>
+              </label>
+
+              <label class="selector-card checkbox-card" for="typeSpecial">
+                <input type="checkbox" name="eventType" id="typeSpecial" value="Sự kiện đặc biệt (sinh nhật, lễ, tết,..)" style="display:none;">
+                <div class="selector-indicator"></div>
+                <span class="selector-text">Sự kiện đặc biệt (sinh nhật, lễ, tết,..)</span>
+              </label>
+
+              <label class="selector-card checkbox-card" for="typeGift">
+                <input type="checkbox" name="eventType" id="typeGift" value="Quà tặng" style="display:none;">
+                <div class="selector-indicator"></div>
+                <span class="selector-text">Quà tặng</span>
+              </label>
+
+              <label class="selector-card checkbox-card" for="typeLucky">
+                <input type="checkbox" name="eventType" id="typeLucky" value="Vòng quay may mắn, rút thăm trúng thưởng" style="display:none;">
+                <div class="selector-indicator"></div>
+                <span class="selector-text">Vòng quay may mắn, rút thăm trúng thưởng</span>
+              </label>
+
+              <label class="selector-card checkbox-card" for="typeOther">
+                <input type="checkbox" name="eventType" id="typeOther" value="Khác" style="display:none;">
+                <div class="selector-indicator"></div>
+                <span class="selector-text">Khác</span>
+              </label>
+
+            </div>
+            <div class="error-message" style="display: none;"></div>
+          </div>
+
+          <div class="form-group" id="group-event-content">
+            <label class="form-label" for="eventContent">
+              Nội dung sự kiện
+            </label>
+            <p class="form-label-desc">Vui lòng tóm tắt ngắn gọn các nội dung chính diễn ra tại sự kiện.</p>
+            <div class="input-wrapper">
+              <textarea 
+                id="eventContent" 
+                name="eventContent" 
+                class="input-control" 
+                placeholder="Nhập tóm tắt nội dung sự kiện..."
+              ></textarea>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ==================== STEP 3: EVIDENCE & CONFIRMATION ==================== -->
+        <div class="form-step" data-step="3">
+          
+          <div class="form-group" id="group-gallery">
+            <label class="form-label">
+              Hình ảnh chương trình sự kiện diễn ra <span class="required">*</span>
+            </label>
+            <p class="form-label-desc">Tải lên tối thiểu 4 bức ảnh rõ nét thể hiện hoạt động thực tế.</p>
+            
+            <!-- Upload Drop Zone -->
+            <div class="upload-container" id="uploadZone">
+              <img src="logo.png" alt="Logo Ontrade" class="upload-logo-img">
+              <h3 class="upload-title">Kéo & thả ảnh vào đây</h3>
+              <p class="upload-subtitle">hoặc bấm để duyệt tệp tin từ thiết bị</p>
+              <span class="upload-btn">
+                <i class="fa-regular fa-images"></i> Chọn tệp ảnh
+              </span>
+              <input 
+                type="file" 
+                id="imageFiles" 
+                class="file-input" 
+                multiple 
+                accept="image/*"
+              >
+            </div>
+            
+            <!-- Counter details -->
+            <div class="upload-counter">
+              <span class="counter-text" id="counterText">Chưa tải ảnh lên</span>
+              <span class="counter-badge" id="counterBadge">0 ảnh</span>
+            </div>
+
+            <!-- Preview Grid -->
+            <div class="preview-grid" id="previewGrid"></div>
+            
+            <div class="error-message" id="gallery-error" style="display: none;"></div>
+          </div>
+
+          <div class="form-group" id="group-guarantee">
+            <label class="form-label">
+              Cam đoan thông tin <span class="required">*</span>
+            </label>
+            <p class="form-label-desc">Tôi cam đoan mọi thông tin trên đều là sự thật tại thời điểm viếng thăm cửa hàng.</p>
+            <div class="selector-grid">
+              
+              <label class="selector-card" for="guaranteeConfirm">
+                <input type="radio" name="guarantee" id="guaranteeConfirm" value="Xác nhận" style="display:none;" required>
+                <div class="selector-indicator"></div>
+                <span class="selector-text">Xác nhận</span>
+              </label>
+
+              <label class="selector-card" for="guaranteeDeny">
+                <input type="radio" name="guarantee" id="guaranteeDeny" value="Không xác nhận" style="display:none;">
+                <div class="selector-indicator"></div>
+                <span class="selector-text">Không xác nhận</span>
+              </label>
+
+              <label class="selector-card" for="guaranteeOther">
+                <input type="radio" name="guarantee" id="guaranteeOther" value="Khác" style="display:none;">
+                <div class="selector-indicator"></div>
+                <span class="selector-text">Khác</span>
+              </label>
+
+            </div>
+            <div class="error-message" style="display: none;"></div>
+          </div>
+
+        </div>
+
+        <!-- ==================== FOOTER BUTTONS ==================== -->
+        <footer class="form-footer">
+          <button type="button" class="btn btn-secondary" id="btnBack" style="visibility: hidden;">
+            <i class="fa-solid fa-arrow-left btn-icon-left"></i> Quay lại
+          </button>
+          
+          <button type="button" class="btn btn-primary" id="btnNext">
+            <span class="btn-text">Tiếp theo</span>
+            <i class="fa-solid fa-arrow-right btn-icon-right"></i>
+            <div class="spinner"></div>
+          </button>
+        </footer>
+
+      </form>
+
+      <!-- ==================== SUCCESS OVERLAY VIEW ==================== -->
+      <section class="success-overlay" id="successOverlay">
+        <div class="confetti-container" id="confettiContainer"></div>
+        
+        <div class="success-icon-wrapper">
+          <div class="success-icon-bg"></div>
+          <div class="success-icon-circle">
+            <i class="fa-solid fa-check"></i>
+          </div>
+        </div>
+
+        <h2 class="success-title">Gửi Báo Cáo Thành Công!</h2>
+        <p class="success-desc">Dữ liệu sự kiện Event Activation đã được mã hóa và gửi thành công lên hệ thống quản lý On-Trade. Yêu cầu thanh toán sẽ được CM xử lý.</p>
+
+        <!-- Brief Receipt Details -->
+        <div class="success-summary-card">
+          <div class="summary-title">Thông tin giao dịch</div>
+          
+          <div class="summary-row">
+            <span class="summary-label">Tên chương trình:</span>
+            <span class="summary-val" id="sumEventName">-</span>
+          </div>
+          
+          <div class="summary-row">
+            <span class="summary-label">Thời gian diễn ra:</span>
+            <span class="summary-val" id="sumEventTime">-</span>
+          </div>
+
+          <div class="summary-row">
+            <span class="summary-label">Loại hình chọn:</span>
+            <span class="summary-val" id="sumEventType">-</span>
+          </div>
+
+          <div class="summary-row">
+            <span class="summary-label">Hình ảnh gửi lên:</span>
+            <span class="summary-val" id="sumImages">-</span>
+          </div>
+        </div>
+
+        <button type="button" class="btn btn-primary" id="btnReset">
+          <i class="fa-solid fa-rotate-right"></i> Cập nhật form mới
+        </button>
+      </section>
+      </div> <!-- Close salesFormContainer -->
+
+      <!-- ==================== ADMIN DASHBOARD SCREEN ==================== -->
+      <div class="admin-dashboard" id="adminDashboard">
+        <header class="admin-dash-header">
+          <div class="admin-dash-title">
+            <span>Diageo Portal</span>
+            <h2>Quản Trị Hệ Thống</h2>
+          </div>
+          <button type="button" class="btn-logout" id="btnAdminLogout">
+            <i class="fa-solid fa-power-off"></i> Đăng xuất
+          </button>
+        </header>
+
+        <!-- Admin Tabs Bar -->
+        <nav class="admin-tabs">
+          <button type="button" class="admin-tab active" data-tab="reports">
+            <i class="fa-regular fa-file-lines"></i> Báo cáo đã gửi
+          </button>
+          <button type="button" class="admin-tab" data-tab="programs">
+            <i class="fa-solid fa-sliders"></i> Tên chương trình
+          </button>
+        </nav>
+
+        <!-- Tab 1 Content: Submissions -->
+        <div class="admin-tab-content active" id="tab-reports">
+          <div class="admin-export-bar">
+            <button type="button" class="btn-export btn-export-excel" id="btnExportExcel">
+              <i class="fa-regular fa-file-excel"></i> Xuất file Excel (.xlsx)
+            </button>
+            <button type="button" class="btn-export btn-export-ppt" id="btnExportPPT">
+              <i class="fa-regular fa-file-powerpoint"></i> Xuất PowerPoint (.pptx)
+            </button>
+            <button type="button" class="btn-export btn-export-clear" id="btnClearAllReports">
+              <i class="fa-solid fa-trash-can"></i> Xóa tất cả báo cáo
+            </button>
+          </div>
+          
+          <div class="report-table-wrapper">
+            <table class="report-table" id="reportTable">
+              <thead>
+                <tr>
+                  <th>Chương trình</th>
+                  <th>Thời gian</th>
+                  <th>Loại hình</th>
+                  <th>Nội dung tóm tắt</th>
+                  <th>Minh chứng</th>
+                  <th>Cam đoan</th>
+                </tr>
+              </thead>
+              <tbody id="reportTableBody">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Tab 2 Content: Program names CRUD -->
+        <div class="admin-tab-content" id="tab-programs">
+          <div class="program-crud-bar">
+            <input type="text" id="newProgramName" class="input-control" placeholder="Tên chương trình mới...">
+            <button type="button" class="btn-crud-add" id="btnAddProgram">
+              <i class="fa-solid fa-plus"></i> Thêm mới
+            </button>
+          </div>
+          
+          <div class="program-crud-list" id="programCrudList">
+            <!-- Injected via JS -->
+          </div>
+        </div>
+      </div>
+
+    </div> <!-- Close form-card -->
+
+    <!-- Admin portal link -->
+    <div class="admin-trigger-container">
+      <span class="admin-link" id="btnAdminTrigger">
+        <i class="fa-solid fa-lock"></i> Cổng quản trị viên
+      </span>
+    </div>
+
+  </main>
+
+  <!-- Admin Login Modal -->
+  <div class="admin-modal-overlay" id="adminLoginModal">
+    <div class="admin-login-card">
+      <button class="admin-modal-close" id="btnCloseLogin"><i class="fa-solid fa-xmark"></i></button>
+      <div class="admin-login-header">
+        <i class="fa-solid fa-user-shield" style="font-size: 2.2rem; color: var(--border-active);"></i>
+        <h3 class="admin-login-title">Đăng Nhập Quản Trị Viên</h3>
+        <p class="admin-login-desc">Hệ thống quản lý Diageo Contracted Program</p>
+      </div>
+      <div class="form-group" id="group-admin-password">
+        <label class="form-label" for="adminPassword">Mật khẩu truy cập</label>
+        <div class="input-wrapper">
+          <i class="fa-solid fa-key input-icon"></i>
+          <input type="password" id="adminPassword" class="input-control input-control-password" placeholder="Nhập mật khẩu..." required>
+          <button type="button" class="password-toggle-btn" id="btnTogglePassword" title="Hiện mật khẩu">
+            <i class="fa-regular fa-eye"></i>
+          </button>
+        </div>
+        <div class="error-message" id="admin-login-error" style="display: none;"></div>
+      </div>
+      <button type="button" class="btn btn-primary" id="btnSubmitLogin" style="width: 100%; margin-top: 10px;">
+        <span class="btn-text">Xác nhận</span>
+        <i class="fa-solid fa-right-to-bracket btn-icon-right"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Edit Program Name Modal -->
+  <div class="edit-program-modal" id="editProgramModal">
+    <div class="edit-program-card">
+      <h4 class="edit-program-title">Chỉnh sửa tên chương trình</h4>
+      <div class="form-group" id="group-edit-program-input" style="margin-bottom: 0;">
+        <input type="text" id="editProgramNameInput" class="input-control" placeholder="Tên chương trình...">
+        <input type="hidden" id="editProgramIndex">
+      </div>
+      <div class="edit-program-actions">
+        <button type="button" class="btn btn-secondary" id="btnCancelEditProgram" style="padding: 8px 14px; font-size: 0.78rem;">Hủy</button>
+        <button type="button" class="btn btn-primary" id="btnSaveEditProgram" style="padding: 8px 14px; font-size: 0.78rem;">Lưu lại</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lightbox Image Preview -->
+  <div class="lightbox-overlay" id="lightboxOverlay">
+    <button class="lightbox-close" id="btnCloseLightbox"><i class="fa-solid fa-xmark"></i></button>
+    <img src="" alt="Full Preview" class="lightbox-img" id="lightboxImg">
+  </div>
+
+  <!-- Core JavaScript Interactivity -->
+  <script src="app.js"></script>
+</body>
+</html>
