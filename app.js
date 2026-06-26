@@ -65,7 +65,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let uploadedImages = []; // Backing state for files
 
   // Autocomplete and database variables
-  const eventNameInput = document.getElementById('eventName');
+  const outletNameInput = document.getElementById('outletName');
+  const programNameInput = document.getElementById('programName');
   const autocompleteList = document.getElementById('autocompleteList');
   let activeItemIndex = -1;
 
@@ -157,23 +158,23 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function selectProgram(name) {
-    eventNameInput.value = name;
+    outletNameInput.value = name;
     autocompleteList.style.display = 'none';
-    clearError('group-event-name');
+    clearError('group-outlet-name');
   }
 
-  eventNameInput.addEventListener('focus', () => {
-    renderAutocomplete(eventNameInput.value);
+  outletNameInput.addEventListener('focus', () => {
+    renderAutocomplete(outletNameInput.value);
   });
 
-  eventNameInput.addEventListener('input', () => {
-    renderAutocomplete(eventNameInput.value);
-    if (eventNameInput.value.trim().length >= 5) {
-      clearError('group-event-name');
+  outletNameInput.addEventListener('input', () => {
+    renderAutocomplete(outletNameInput.value);
+    if (outletNameInput.value.trim().length >= 1) {
+      clearError('group-outlet-name');
     }
   });
 
-  eventNameInput.addEventListener('keydown', (e) => {
+  outletNameInput.addEventListener('keydown', (e) => {
     const items = autocompleteList.querySelectorAll('.autocomplete-item');
     if (autocompleteList.style.display !== 'block' || items.length === 0) return;
 
@@ -207,7 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   document.addEventListener('click', (e) => {
-    if (!eventNameInput.contains(e.target) && !autocompleteList.contains(e.target)) {
+    if (!outletNameInput.contains(e.target) && !autocompleteList.contains(e.target)) {
       autocompleteList.style.display = 'none';
     }
   });
@@ -388,16 +389,25 @@ document.addEventListener('DOMContentLoaded', () => {
     let isValid = true;
     
     if (step === 1) {
-      // Validate Event Name
-      const eventName = document.getElementById('eventName');
-      if (!eventName.value.trim()) {
-        showError('group-event-name', 'Tên chương trình sự kiện không được để trống.');
-        isValid = false;
-      } else if (eventName.value.trim().length < 5) {
-        showError('group-event-name', 'Tên chương trình phải có tối thiểu 5 ký tự.');
+      // Validate Outlet Name
+      const outletName = document.getElementById('outletName');
+      if (!outletName.value.trim()) {
+        showError('group-outlet-name', 'Tên Outlet không được để trống.');
         isValid = false;
       } else {
-        clearError('group-event-name');
+        clearError('group-outlet-name');
+      }
+
+      // Validate Program Name
+      const programName = document.getElementById('programName');
+      if (!programName.value.trim()) {
+        showError('group-program-name', 'Tên chương trình không được để trống.');
+        isValid = false;
+      } else if (programName.value.trim().length < 5) {
+        showError('group-program-name', 'Tên chương trình phải có tối thiểu 5 ký tự.');
+        isValid = false;
+      } else {
+        clearError('group-program-name');
       }
       
       // Validate Start & End Dates
@@ -434,7 +444,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // Validate Event Type Checkboxes (At least one checked)
       const checkedTypes = document.querySelectorAll('input[name="eventType"]:checked');
       if (checkedTypes.length === 0) {
-        showError('group-event-type', 'Vui lòng chọn ít nhất một loại hình chương trình.');
+        showError('group-event-type', 'Vui lòng chọn ít nhất một loại hình hoạt động.');
         isValid = false;
       } else {
         clearError('group-event-type');
@@ -727,10 +737,11 @@ document.addEventListener('DOMContentLoaded', () => {
     btnBack.disabled = false;
   }
 
-  function finishSubmission(nameVal, startVal, endVal, typesVal) {
+  function finishSubmission(outletVal, programVal, startVal, endVal, typesVal) {
     resetSubmitBtn();
     
-    document.getElementById('sumEventName').textContent = nameVal;
+    document.getElementById('sumOutletName').textContent = outletVal;
+    document.getElementById('sumProgramName').textContent = programVal;
     document.getElementById('sumEventTime').textContent = `${formatDate(startVal)} - ${formatDate(endVal)}`;
     document.getElementById('sumEventType').textContent = truncateText(typesVal, 50);
     document.getElementById('sumImages').textContent = `${uploadedImages.length} ảnh đã xác thực`;
@@ -755,7 +766,8 @@ document.addEventListener('DOMContentLoaded', () => {
     Promise.all(compressPromises)
       .then(base64Images => {
         // Create report object
-        const nameVal = document.getElementById('eventName').value;
+        const outletVal = document.getElementById('outletName').value.trim();
+        const programVal = document.getElementById('programName').value.trim();
         const startVal = document.getElementById('startDate').value;
         const endVal = document.getElementById('endDate').value;
         const checkedBoxes = Array.from(document.querySelectorAll('input[name="eventType"]:checked'));
@@ -782,7 +794,8 @@ document.addEventListener('DOMContentLoaded', () => {
         uploadPromise.then(finalImages => {
           const newReport = {
             id: reportId,
-            eventName: nameVal,
+            outletName: outletVal,
+            programName: programVal,
             startDate: startVal,
             endDate: endVal,
             eventTypes: typesList,
@@ -794,7 +807,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
           if (useFirebase) {
             db.collection('reports').doc(reportId).set(newReport).then(() => {
-              finishSubmission(nameVal, startVal, endVal, typesVal);
+              finishSubmission(outletVal, programVal, startVal, endVal, typesVal);
             }).catch(err => {
               console.error("Firestore save error:", err);
               resetSubmitBtn();
@@ -1043,7 +1056,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (reports.length === 0) {
       reportTableBody.innerHTML = `
         <tr>
-          <td colspan="6">
+          <td colspan="7">
             <div class="no-data-msg">Chưa có báo cáo nào được gửi lên hệ thống.</div>
           </td>
         </tr>
@@ -1057,9 +1070,13 @@ document.addEventListener('DOMContentLoaded', () => {
     sortedReports.forEach(report => {
       const tr = document.createElement('tr');
       
-      // Program Name cell
-      const tdName = document.createElement('td');
-      tdName.innerHTML = `<div class="event-name-td">${report.eventName}</div>`;
+      // Outlet cell
+      const tdOutlet = document.createElement('td');
+      tdOutlet.innerHTML = `<div class="event-name-td">${report.outletName || report.eventName || '-'}</div>`;
+
+      // Program cell
+      const tdProgram = document.createElement('td');
+      tdProgram.innerHTML = `<div class="event-name-td" style="font-weight: 500;">${report.programName || '-'}</div>`;
       
       // Dates cell
       const tdTime = document.createElement('td');
@@ -1107,7 +1124,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const tdGuarantee = document.createElement('td');
       tdGuarantee.textContent = report.guarantee;
       
-      tr.appendChild(tdName);
+      tr.appendChild(tdOutlet);
+      tr.appendChild(tdProgram);
       tr.appendChild(tdTime);
       tr.appendChild(tdTypes);
       tr.appendChild(tdContent);
@@ -1161,20 +1179,20 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Add delete action listener
       item.querySelector('.btn-crud-delete').addEventListener('click', () => {
-        if (confirm(`Bạn chắc chắn muốn xóa chương trình: "${prog}"?`)) {
+        if (confirm(`Bạn chắc chắn muốn xóa Outlet: "${prog}"?`)) {
           if (useFirebase) {
             db.collection('programs').where('name', '==', prog).get().then(snapshot => {
               snapshot.forEach(doc => doc.ref.delete());
-              showToast('Đã xóa', 'Xóa tên chương trình thành công.', 'success');
+              showToast('Đã xóa', 'Xóa tên Outlet thành công.', 'success');
             }).catch(err => {
               console.error("Firestore delete error:", err);
-              showToast('Lỗi', 'Không thể xóa chương trình trên đám mây.', 'error');
+              showToast('Lỗi', 'Không thể xóa Outlet trên đám mây.', 'error');
             });
           } else {
             samplePrograms.splice(index, 1);
             localStorage.setItem('diageo_programs', JSON.stringify(samplePrograms));
             renderProgramCrudList();
-            showToast('Đã xóa', 'Xóa tên chương trình thành công.', 'success');
+            showToast('Đã xóa', 'Xóa tên Outlet thành công.', 'success');
           }
         }
       });
@@ -1187,29 +1205,29 @@ document.addEventListener('DOMContentLoaded', () => {
   btnAddProgram.addEventListener('click', () => {
     const newName = newProgramNameInput.value.trim();
     if (!newName) {
-      showToast('Thông tin trống', 'Vui lòng nhập tên chương trình.', 'warning');
+      showToast('Thông tin trống', 'Vui lòng nhập tên Outlet.', 'warning');
       return;
     }
     
     if (samplePrograms.includes(newName)) {
-      showToast('Trùng lặp', 'Tên chương trình này đã tồn tại.', 'warning');
+      showToast('Trùng lặp', 'Tên Outlet này đã tồn tại.', 'warning');
       return;
     }
     
     if (useFirebase) {
       db.collection('programs').add({ name: newName }).then(() => {
         newProgramNameInput.value = '';
-        showToast('Đã thêm', 'Thêm chương trình mới thành công.', 'success');
+        showToast('Đã thêm', 'Thêm Outlet mới thành công.', 'success');
       }).catch(err => {
         console.error("Firestore add error:", err);
-        showToast('Lỗi', 'Không thể thêm chương trình vào đám mây.', 'error');
+        showToast('Lỗi', 'Không thể thêm Outlet vào đám mây.', 'error');
       });
     } else {
       samplePrograms.push(newName);
       localStorage.setItem('diageo_programs', JSON.stringify(samplePrograms));
       newProgramNameInput.value = '';
       renderProgramCrudList();
-      showToast('Đã thêm', 'Thêm chương trình mới thành công.', 'success');
+      showToast('Đã thêm', 'Thêm Outlet mới thành công.', 'success');
     }
   });
 
@@ -1224,14 +1242,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const oldName = samplePrograms[index];
     
     if (!updatedName) {
-      showToast('Thông tin trống', 'Tên chương trình không được để trống.', 'warning');
+      showToast('Thông tin trống', 'Tên Outlet không được để trống.', 'warning');
       return;
     }
     
     // Check duplication with other items
     const duplicate = samplePrograms.some((prog, idx) => prog === updatedName && idx !== index);
     if (duplicate) {
-      showToast('Trùng lặp', 'Tên chương trình này đã tồn tại.', 'warning');
+      showToast('Trùng lặp', 'Tên Outlet này đã tồn tại.', 'warning');
       return;
     }
     
@@ -1239,17 +1257,17 @@ document.addEventListener('DOMContentLoaded', () => {
       db.collection('programs').where('name', '==', oldName).get().then(snapshot => {
         snapshot.forEach(doc => doc.ref.update({ name: updatedName }));
         editProgramModal.classList.remove('active');
-        showToast('Đã cập nhật', 'Cập nhật tên chương trình thành công.', 'success');
+        showToast('Đã cập nhật', 'Cập nhật tên Outlet thành công.', 'success');
       }).catch(err => {
         console.error("Firestore update error:", err);
-        showToast('Lỗi', 'Không thể cập nhật chương trình trên đám mây.', 'error');
+        showToast('Lỗi', 'Không thể cập nhật Outlet trên đám mây.', 'error');
       });
     } else {
       samplePrograms[index] = updatedName;
       localStorage.setItem('diageo_programs', JSON.stringify(samplePrograms));
       editProgramModal.classList.remove('active');
       renderProgramCrudList();
-      showToast('Đã cập nhật', 'Cập nhật tên chương trình thành công.', 'success');
+      showToast('Đã cập nhật', 'Cập nhật tên Outlet thành công.', 'success');
     }
   });
 
@@ -1316,7 +1334,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Set column definitions dynamically
     const columns = [
       { header: 'Mã báo cáo', key: 'id', width: 18 },
-      { header: 'Tên chương trình', key: 'eventName', width: 45 },
+      { header: 'Tên Outlet', key: 'outletName', width: 35 },
+      { header: 'Tên chương trình', key: 'programName', width: 35 },
       { header: 'Ngày bắt đầu', key: 'startDate', width: 15 },
       { header: 'Ngày kết thúc', key: 'endDate', width: 15 },
       { header: 'Loại hình', key: 'eventTypes', width: 35 },
@@ -1358,7 +1377,8 @@ document.addEventListener('DOMContentLoaded', () => {
     reports.forEach((report, index) => {
       const row = worksheet.addRow({
         id: report.id,
-        eventName: report.eventName,
+        outletName: report.outletName || report.eventName || '-',
+        programName: report.programName || '-',
         startDate: formatDate(report.startDate),
         endDate: formatDate(report.endDate),
         eventTypes: report.eventTypes.join(', '),
@@ -1374,8 +1394,8 @@ document.addEventListener('DOMContentLoaded', () => {
       for (let colNum = 1; colNum <= columns.length; colNum++) {
         const cell = row.getCell(colNum);
         cell.font = { name: 'Segoe UI', size: 10, color: { argb: '1E293B' } };
-        // Center ID, dates, guarantee status, timestamp, and all image columns (colIndex >= 9)
-        const isCenter = colNum === 1 || colNum === 3 || colNum === 4 || colNum === 7 || colNum === 8 || colNum >= 9;
+        // Center ID, dates, guarantee status, timestamp, and all image columns (colIndex >= 10)
+        const isCenter = colNum === 1 || colNum === 4 || colNum === 5 || colNum === 8 || colNum === 9 || colNum >= 10;
         cell.alignment = { 
           vertical: 'middle', 
           horizontal: isCenter ? 'center' : 'left', 
@@ -1402,7 +1422,7 @@ document.addEventListener('DOMContentLoaded', () => {
               extension: 'jpeg'
             });
             worksheet.addImage(imageId, {
-              tl: { col: 8 + imgIdx, row: row.number - 1 },
+              tl: { col: 9 + imgIdx, row: row.number - 1 },
               ext: { width: 120, height: 90 }, // width & height in pixels
               editAs: 'oneCell'
             });
@@ -1426,7 +1446,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   extension: 'jpeg'
                 });
                 worksheet.addImage(imageId, {
-                  tl: { col: 8 + imgIdx, row: row.number - 1 },
+                  tl: { col: 9 + imgIdx, row: row.number - 1 },
                   ext: { width: 120, height: 90 },
                   editAs: 'oneCell'
                 });
@@ -1437,7 +1457,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .catch(err => {
               console.warn("CORS or network error fetching image for Excel, writing clickable link instead:", err);
               // Fallback: write hyperlink text in cell
-              worksheet.getCell(row.number, 9 + imgIdx).value = {
+              worksheet.getCell(row.number, 10 + imgIdx).value = {
                 text: `Xem ảnh ${imgIdx + 1}`,
                 hyperlink: imgSrc
               };
@@ -1521,20 +1541,23 @@ document.addEventListener('DOMContentLoaded', () => {
         // Grouped Info Box (unified text box with runs to prevent overlaps)
         slide.addText(
           [
-            { text: "TÊN CHƯƠNG TRÌNH:\n", options: { bold: true, color: "1e293b", fontSize: 8.5 } },
-            { text: report.eventName + "\n\n", options: { color: "334155", fontSize: 10, bold: true } },
+            { text: "TÊN OUTLET:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+            { text: (report.outletName || report.eventName || '-') + "\n", options: { color: "334155", fontSize: 9.0, bold: true } },
             
-            { text: "THỜI GIAN DIỄN RA:\n", options: { bold: true, color: "1e293b", fontSize: 8.5 } },
-            { text: `${formatDate(report.startDate)} - ${formatDate(report.endDate)}\n\n`, options: { color: "475569", fontSize: 9.5 } },
+            { text: "TÊN CHƯƠNG TRÌNH:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+            { text: (report.programName || '-') + "\n", options: { color: "334155", fontSize: 9.0, bold: true } },
             
-            { text: "LOẠI HÌNH CHƯƠNG TRÌNH:\n", options: { bold: true, color: "1e293b", fontSize: 8.5 } },
-            { text: `${report.eventTypes.join(', ')}\n\n`, options: { color: "6366f1", bold: true, fontSize: 9.0 } },
+            { text: "THỜI GIAN DIỄN RA:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+            { text: `${formatDate(report.startDate)} - ${formatDate(report.endDate)}\n`, options: { color: "475569", fontSize: 8.5 } },
             
-            { text: "NỘI DUNG TÓM TẮT:\n", options: { bold: true, color: "1e293b", fontSize: 8.5 } },
-            { text: `${report.eventContent || '(Không có tóm tắt)'}\n\n`, options: { color: "475569", fontSize: 9.0 } },
+            { text: "LOẠI HÌNH HOẠT ĐỘNG:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+            { text: `${report.eventTypes.join(', ')}\n`, options: { color: "6366f1", bold: true, fontSize: 8.5 } },
             
-            { text: "TRẠNG THÁI XÁC THỰC:\n", options: { bold: true, color: "1e293b", fontSize: 8.5 } },
-            { text: `${report.guarantee} tại thời điểm viếng thăm`, options: { color: "64748b", italic: true, fontSize: 8.5 } }
+            { text: "NỘI DUNG TÓM TẮT:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+            { text: `${report.eventContent || '(Không có tóm tắt)'}\n`, options: { color: "475569", fontSize: 8.5 } },
+            
+            { text: "TRẠNG THÁI XÁC THỰC:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+            { text: `${report.guarantee} tại thời điểm viếng thăm`, options: { color: "64748b", italic: true, fontSize: 8.0 } }
           ],
           {
             x: 0.7, y: 1.35, w: 3.6, h: 4.5,

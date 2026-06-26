@@ -46,7 +46,7 @@
         <!-- Premium Header Section -->
         <header class="form-header">
         <div class="brand-badge">
-          <img src="logo.png" alt="Logo" class="brand-badge-img">
+          <i class="fa-solid fa-shield-halved"></i>
           <span>Diageo On-Trade Contracted Program</span>
         </div>
         <h1 class="form-title" id="formTitle">Cập Nhật Thông Tin Sự Kiện Event Activation</h1>
@@ -68,7 +68,7 @@
             <ul>
               <li>Hình ảnh event/activation phải đăng <strong>tối thiểu 4 tấm hình</strong> diễn ra sự kiện, hoạt động trước đó có liên quan đến sản phẩm của Diageo.</li>
               <li>Nếu điểm bán là nhà hàng, có thể đăng hình ảnh sự kiện trên menu, tencard đặt tại bàn, quầy lễ tân, standee hoặc backdrop.</li>
-              <li>Hình ảnh rõ nét, thể hiện rõ tên chương trình đã đăng ký, ngày tháng năm diễn ra chương trình, và địa điểm tại outlet đã đăng ký.</li>
+              <li>Hình ảnh rõ nét, thể hiện rõ tên Outlet đã đăng ký, ngày tháng năm diễn ra chương trình, và địa điểm tại outlet đã đăng ký.</li>
             </ul>
             <div class="info-note">
               <i class="fa-solid fa-triangle-exclamation"></i>
@@ -97,7 +97,7 @@
           
           <div class="form-group" id="group-event-name" style="position: relative;">
             <label class="form-label" for="eventName">
-              Tên chương trình sự kiện đăng ký <span class="required">*</span>
+              Tên Outlet đăng ký <span class="required">*</span>
             </label>
             <div class="input-wrapper">
               <i class="fa-solid fa-magnifying-glass input-icon"></i>
@@ -106,7 +106,7 @@
                 id="eventName" 
                 name="eventName" 
                 class="input-control" 
-                placeholder="Gõ hoặc chọn chương trình đã duyệt..."
+                placeholder="Gõ hoặc chọn tên Outlet..."
                 required
                 autocomplete="off"
               >
@@ -333,7 +333,7 @@
           <div class="summary-title">Thông tin giao dịch</div>
           
           <div class="summary-row">
-            <span class="summary-label">Tên chương trình:</span>
+            <span class="summary-label">Tên Outlet:</span>
             <span class="summary-val" id="sumEventName">-</span>
           </div>
           
@@ -377,7 +377,7 @@
             <i class="fa-regular fa-file-lines"></i> Báo cáo đã gửi
           </button>
           <button type="button" class="admin-tab" data-tab="programs">
-            <i class="fa-solid fa-sliders"></i> Tên chương trình
+            <i class="fa-solid fa-sliders"></i> Tên Outlet
           </button>
         </nav>
 
@@ -399,7 +399,7 @@
             <table class="report-table" id="reportTable">
               <thead>
                 <tr>
-                  <th>Chương trình</th>
+                  <th>Tên Outlet</th>
                   <th>Thời gian</th>
                   <th>Loại hình</th>
                   <th>Nội dung tóm tắt</th>
@@ -417,7 +417,7 @@
         <!-- Tab 2 Content: Program names CRUD -->
         <div class="admin-tab-content" id="tab-programs">
           <div class="program-crud-bar">
-            <input type="text" id="newProgramName" class="input-control" placeholder="Tên chương trình mới...">
+            <input type="text" id="newProgramName" class="input-control" placeholder="Tên Outlet mới...">
             <button type="button" class="btn-crud-add" id="btnAddProgram">
               <i class="fa-solid fa-plus"></i> Thêm mới
             </button>
@@ -470,9 +470,9 @@
   <!-- Edit Program Name Modal -->
   <div class="edit-program-modal" id="editProgramModal">
     <div class="edit-program-card">
-      <h4 class="edit-program-title">Chỉnh sửa tên chương trình</h4>
+      <h4 class="edit-program-title">Chỉnh sửa tên Outlet</h4>
       <div class="form-group" id="group-edit-program-input" style="margin-bottom: 0;">
-        <input type="text" id="editProgramNameInput" class="input-control" placeholder="Tên chương trình...">
+        <input type="text" id="editProgramNameInput" class="input-control" placeholder="Tên Outlet...">
         <input type="hidden" id="editProgramIndex">
       </div>
       <div class="edit-program-actions">
