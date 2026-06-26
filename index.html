@@ -95,16 +95,17 @@
         <!-- ==================== STEP 1: GENERAL INFO ==================== -->
         <div class="form-step active" data-step="1">
           
-          <div class="form-group" id="group-event-name" style="position: relative;">
-            <label class="form-label" for="eventName">
+          <!-- Tên Outlet (Chọn) -->
+          <div class="form-group" id="group-outlet-name" style="position: relative;">
+            <label class="form-label" for="outletName">
               Tên Outlet đăng ký <span class="required">*</span>
             </label>
             <div class="input-wrapper">
               <i class="fa-solid fa-magnifying-glass input-icon"></i>
               <input 
                 type="text" 
-                id="eventName" 
-                name="eventName" 
+                id="outletName" 
+                name="outletName" 
                 class="input-control" 
                 placeholder="Gõ hoặc chọn tên Outlet..."
                 required
@@ -114,6 +115,25 @@
             </div>
             <!-- Searchable Dropdown List -->
             <div class="autocomplete-list" id="autocompleteList"></div>
+            <div class="error-message" style="display: none;"></div>
+          </div>
+
+          <!-- Tên chương trình (Nhập) -->
+          <div class="form-group" id="group-program-name">
+            <label class="form-label" for="programName">
+              Tên chương trình sự kiện <span class="required">*</span>
+            </label>
+            <div class="input-wrapper">
+              <i class="fa-solid fa-gift input-icon"></i>
+              <input 
+                type="text" 
+                id="programName" 
+                name="programName" 
+                class="input-control" 
+                placeholder="Nhập tên chương trình sự kiện diễn ra..."
+                required
+              >
+            </div>
             <div class="error-message" style="display: none;"></div>
           </div>
 
@@ -334,7 +354,12 @@
           
           <div class="summary-row">
             <span class="summary-label">Tên Outlet:</span>
-            <span class="summary-val" id="sumEventName">-</span>
+            <span class="summary-val" id="sumOutletName">-</span>
+          </div>
+          
+          <div class="summary-row">
+            <span class="summary-label">Tên chương trình:</span>
+            <span class="summary-val" id="sumProgramName">-</span>
           </div>
           
           <div class="summary-row">
