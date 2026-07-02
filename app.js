@@ -1508,6 +1508,45 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Helper to pre-load and convert data or HTTP URLs into clean base64 string for exporting
+  function cleanImageForExport(imgSrc) {
+    if (!imgSrc) return Promise.resolve({ success: false });
+
+    // Case 1: Already a Base64 data URL
+    if (imgSrc.startsWith('data:')) {
+      const commaIdx = imgSrc.indexOf(',');
+      const base64 = commaIdx !== -1 ? imgSrc.substring(commaIdx + 1) : imgSrc;
+      return Promise.resolve({ success: true, base64, originalSrc: imgSrc });
+    }
+
+    // Case 2: Remote HTTP/HTTPS URL
+    if (imgSrc.startsWith('http')) {
+      const proxiedUrl = `https://corsproxy.io/?${encodeURIComponent(imgSrc)}`;
+      return fetch(proxiedUrl)
+        .then(res => {
+          if (!res.ok) throw new Error("Network response was not ok");
+          return res.blob();
+        })
+        .then(blob => new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const dataUrl = reader.result;
+            const commaIdx = dataUrl.indexOf(',');
+            const base64 = commaIdx !== -1 ? dataUrl.substring(commaIdx + 1) : dataUrl;
+            resolve({ success: true, base64, originalSrc: imgSrc });
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        }))
+        .catch(err => {
+          console.error("CORS proxy fetch error for image:", err);
+          return { success: false, originalSrc: imgSrc };
+        });
+    }
+
+    return Promise.resolve({ success: false, originalSrc: imgSrc });
+  }
+
   // Excel XLSX Export with Images using ExcelJS
   btnExportExcel.addEventListener('click', () => {
     if (reports.length === 0) {
@@ -1517,136 +1556,107 @@ document.addEventListener('DOMContentLoaded', () => {
 
     showToast('Đang tạo XLSX', 'Đang thiết lập bảng tính và nhúng hình ảnh...', 'info', 3000);
 
-    // Initialize ExcelJS Workbook
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Báo cáo Activation');
-
-    // Set page view options
-    worksheet.views = [{ showGridLines: true }];
-
-    // Calculate the maximum number of images across all reports to determine column count
-    let maxImages = 4; // default minimum is 4 columns
-    reports.forEach(r => {
-      if (r.images && r.images.length > maxImages) {
-        maxImages = r.images.length;
-      }
-    });
-
-    // Set column definitions dynamically
-    const columns = [
-      { header: 'Mã báo cáo', key: 'id', width: 18 },
-      { header: 'Tên Outlet', key: 'outletName', width: 35 },
-      { header: 'Loại hoạt động', key: 'activityType', width: 18 },
-      { header: 'Tên chương trình', key: 'programName', width: 35 },
-      { header: 'Ngày bắt đầu', key: 'startDate', width: 15 },
-      { header: 'Ngày kết thúc', key: 'endDate', width: 15 },
-      { header: 'Loại hình', key: 'eventTypes', width: 35 },
-      { header: 'Nội dung tóm tắt', key: 'eventContent', width: 50 },
-      { header: 'Xác thực cam đoan', key: 'guarantee', width: 20 },
-      { header: 'Thời gian gửi', key: 'timestamp', width: 22 }
-    ];
-
-    // Dynamically append image columns based on maximum images submitted
-    for (let i = 1; i <= maxImages; i++) {
-      columns.push({ header: `Ảnh minh chứng ${i}`, key: `img${i}`, width: 24 });
-    }
-
-    worksheet.columns = columns;
-
-    // Style the header row
-    const headerRow = worksheet.getRow(1);
-    headerRow.height = 30;
-    headerRow.eachCell((cell) => {
-      cell.font = { bold: true, color: { argb: 'FFFFFF' }, name: 'Segoe UI', size: 11 };
-      cell.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: '4F46E5' } // Indigo color
-      };
-      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-      cell.border = {
-        top: { style: 'thin', color: { argb: 'CBD5E1' } },
-        left: { style: 'thin', color: { argb: 'CBD5E1' } },
-        bottom: { style: 'medium', color: { argb: '475569' } },
-        right: { style: 'thin', color: { argb: 'CBD5E1' } }
-      };
-    });
-
-    // Collect all asynchronous image download promises for remote URLs
-    const imageFetchPromises = [];
-
-    // Populate data
-    reports.forEach((report, index) => {
-      const row = worksheet.addRow({
-        id: report.id,
-        outletName: report.outletName || report.eventName || '-',
-        activityType: report.activityType === 'Display' ? 'Display' : 'Event',
-        programName: report.programName || '-',
-        startDate: report.activityType === 'Display' ? '-' : (formatDate(report.startDate) || '-'),
-        endDate: report.activityType === 'Display' ? '-' : (formatDate(report.endDate) || '-'),
-        eventTypes: report.eventTypes ? report.eventTypes.join(', ') : '-',
-        eventContent: report.eventContent || '-',
-        guarantee: report.guarantee,
-        timestamp: new Date(report.timestamp).toLocaleString('vi-VN')
+    // Pre-clean all images for all reports before building workbook
+    const reportCleanPromises = reports.map(report => {
+      const imagePromises = (report.images || []).map(imgSrc => cleanImageForExport(imgSrc));
+      return Promise.all(imagePromises).then(cleanedImages => {
+        return { ...report, cleanedImages };
       });
+    });
 
-      // Set generous row height for images (100px)
-      row.height = 100;
+    Promise.all(reportCleanPromises)
+      .then(cleanedReports => {
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Báo cáo Activation');
+        worksheet.views = [{ showGridLines: true }];
 
-      // Style all data cells (including dynamic image cells to draw borders)
-      for (let colNum = 1; colNum <= columns.length; colNum++) {
-        const cell = row.getCell(colNum);
-        cell.font = { name: 'Segoe UI', size: 10, color: { argb: '1E293B' } };
-        // Center ID, activityType, dates, guarantee status, timestamp, and all image columns (colIndex >= 11)
-        const isCenter = colNum === 1 || colNum === 3 || colNum === 5 || colNum === 6 || colNum === 9 || colNum === 10 || colNum >= 11;
-        cell.alignment = { 
-          vertical: 'middle', 
-          horizontal: isCenter ? 'center' : 'left', 
-          wrapText: true 
-        };
-        cell.border = {
-          top: { style: 'thin', color: { argb: 'F1F5F9' } },
-          left: { style: 'thin', color: { argb: 'E2E8F0' } },
-          bottom: { style: 'thin', color: { argb: 'E2E8F0' } },
-          right: { style: 'thin', color: { argb: 'E2E8F0' } }
-        };
-      }
-
-      // Add report images inside Excel cells dynamically (supports Base64 and remote URLs)
-      const images = report.images || [];
-      images.forEach((imgSrc, imgIdx) => {
-        if (!imgSrc) return;
-
-        if (imgSrc.startsWith('data:')) {
-          // If it is already a Base64 data URL
-          try {
-            const imageId = workbook.addImage({
-              base64: imgSrc,
-              extension: 'jpeg'
-            });
-            worksheet.addImage(imageId, {
-              tl: { col: 10 + imgIdx, row: row.number - 1 },
-              ext: { width: 120, height: 90 }, // width & height in pixels
-              editAs: 'oneCell'
-            });
-          } catch (e) {
-            console.error("Error adding local image to Excel cell:", e);
+        // Calculate maximum images
+        let maxImages = 4;
+        cleanedReports.forEach(r => {
+          if (r.cleanedImages && r.cleanedImages.length > maxImages) {
+            maxImages = r.cleanedImages.length;
           }
-        } else if (imgSrc.startsWith('http')) {
-          // If it is a remote URL, fetch via corsproxy.io to avoid CORS issues and convert to Base64
-          const proxiedUrl = `https://corsproxy.io/?${encodeURIComponent(imgSrc)}`;
-          const promise = fetch(proxiedUrl)
-            .then(res => res.blob())
-            .then(blob => new Promise((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result);
-              reader.onerror = reject;
-              reader.readAsDataURL(blob);
-            }))
-            .then(b64 => {
+        });
+
+        // Set column definitions dynamically
+        const columns = [
+          { header: 'Mã báo cáo', key: 'id', width: 18 },
+          { header: 'Tên Outlet', key: 'outletName', width: 35 },
+          { header: 'Loại hoạt động', key: 'activityType', width: 18 },
+          { header: 'Tên chương trình', key: 'programName', width: 35 },
+          { header: 'Ngày bắt đầu', key: 'startDate', width: 15 },
+          { header: 'Ngày kết thúc', key: 'endDate', width: 15 },
+          { header: 'Loại hình', key: 'eventTypes', width: 35 },
+          { header: 'Nội dung tóm tắt', key: 'eventContent', width: 50 },
+          { header: 'Xác thực cam đoan', key: 'guarantee', width: 20 },
+          { header: 'Thời gian gửi', key: 'timestamp', width: 22 }
+        ];
+
+        for (let i = 1; i <= maxImages; i++) {
+          columns.push({ header: `Ảnh minh chứng ${i}`, key: `img${i}`, width: 24 });
+        }
+        worksheet.columns = columns;
+
+        // Style the header row
+        const headerRow = worksheet.getRow(1);
+        headerRow.height = 30;
+        headerRow.eachCell((cell) => {
+          cell.font = { bold: true, color: { argb: 'FFFFFF' }, name: 'Segoe UI', size: 11 };
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: '4F46E5' }
+          };
+          cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'CBD5E1' } },
+            left: { style: 'thin', color: { argb: 'CBD5E1' } },
+            bottom: { style: 'medium', color: { argb: '475569' } },
+            right: { style: 'thin', color: { argb: 'CBD5E1' } }
+          };
+        });
+
+        // Populate data
+        cleanedReports.forEach((report) => {
+          const row = worksheet.addRow({
+            id: report.id,
+            outletName: report.outletName || report.eventName || '-',
+            activityType: report.activityType === 'Display' ? 'Display' : 'Event',
+            programName: report.programName || '-',
+            startDate: report.activityType === 'Display' ? '-' : (formatDate(report.startDate) || '-'),
+            endDate: report.activityType === 'Display' ? '-' : (formatDate(report.endDate) || '-'),
+            eventTypes: report.eventTypes ? report.eventTypes.join(', ') : '-',
+            eventContent: report.eventContent || '-',
+            guarantee: report.guarantee,
+            timestamp: new Date(report.timestamp).toLocaleString('vi-VN')
+          });
+
+          row.height = 100;
+
+          // Style cells
+          for (let colNum = 1; colNum <= columns.length; colNum++) {
+            const cell = row.getCell(colNum);
+            cell.font = { name: 'Segoe UI', size: 10, color: { argb: '1E293B' } };
+            const isCenter = colNum === 1 || colNum === 3 || colNum === 5 || colNum === 6 || colNum === 9 || colNum === 10 || colNum >= 11;
+            cell.alignment = { 
+              vertical: 'middle', 
+              horizontal: isCenter ? 'center' : 'left', 
+              wrapText: true 
+            };
+            cell.border = {
+              top: { style: 'thin', color: { argb: 'F1F5F9' } },
+              left: { style: 'thin', color: { argb: 'E2E8F0' } },
+              bottom: { style: 'thin', color: { argb: 'E2E8F0' } },
+              right: { style: 'thin', color: { argb: 'E2E8F0' } }
+            };
+          }
+
+          // Add images to cells
+          report.cleanedImages.forEach((imgResult, imgIdx) => {
+            if (imgResult.success) {
               try {
                 const imageId = workbook.addImage({
-                  base64: b64,
+                  base64: imgResult.base64,
                   extension: 'jpeg'
                 });
                 worksheet.addImage(imageId, {
@@ -1655,25 +1665,17 @@ document.addEventListener('DOMContentLoaded', () => {
                   editAs: 'oneCell'
                 });
               } catch (e) {
-                console.error("Error adding remote image to Excel cell:", e);
+                console.error("Error adding image to cell:", e);
               }
-            })
-            .catch(err => {
-              console.warn("CORS or network error fetching image for Excel, writing clickable link instead:", err);
-              // Fallback: write hyperlink text in cell
+            } else {
               worksheet.getCell(row.number, 11 + imgIdx).value = {
                 text: `Xem ảnh ${imgIdx + 1}`,
-                hyperlink: imgSrc
+                hyperlink: imgResult.originalSrc
               };
-            });
-          imageFetchPromises.push(promise);
-        }
-      });
-    });
+            }
+          });
+        });
 
-    // Wait for all remote image downloads to complete before saving the file
-    Promise.all(imageFetchPromises)
-      .then(() => {
         return workbook.xlsx.writeBuffer();
       })
       .then(buffer => {
@@ -1701,169 +1703,148 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     showToast('Đang tạo PPTX', 'Đang thiết lập bố cục slide PowerPoint...', 'info', 2000);
-    
-    // Initialize PptxGenJS
-    let pptx = new PptxGenJS();
-    
-    // Set presentation properties
-    pptx.title = "Diageo On-Trade Activation Report";
-    pptx.layout = "LAYOUT_16x9";
-    
-    reports.forEach((report, index) => {
-      const images = report.images || [];
-      const imagesPerSlide = 6;
-      const totalSlidesForReport = Math.max(1, Math.ceil(images.length / imagesPerSlide));
-      
-      for (let slideIdx = 0; slideIdx < totalSlidesForReport; slideIdx++) {
-        let slide = pptx.addSlide();
-        
-        // 1. Header Bar (Dark Navy)
-        slide.addShape(pptx.ShapeType.rect, {
-          x: 0, y: 0, w: "100%", h: 0.9,
-          fill: { color: "4f46e5" } // Indigo background
-        });
-        
-        // Header Text
-        slide.addText(`DIAGEO ON-TRADE CONTRACTED PROGRAM`, {
-          x: 0.5, y: 0.15, fontSize: 11, bold: true, color: "fbbf24" // Gold subtitle
-        });
-        
-        const pageSuffix = totalSlidesForReport > 1 ? ` (Trang ${slideIdx + 1}/${totalSlidesForReport})` : "";
-        slide.addText(`BÁO CÁO ACTIVATION #${index + 1}${pageSuffix}`, {
-          x: 0.5, y: 0.42, fontSize: 18, bold: true, color: "ffffff"
-        });
 
-        // 2. Left side: Report Metadata Card
-        // Card background
-        slide.addShape(pptx.ShapeType.roundRect, {
-          x: 0.5, y: 1.2, w: 4.0, h: 4.8,
-          fill: { color: "f8fafc" },
-          line: { color: "cbd5e1", width: 1 },
-          radius: 0.05
-        });
-        
-        // Grouped Info Box (dynamic text runs based on activityType)
-        let textRuns = [];
-        if (report.activityType === 'Display') {
-          textRuns = [
-            { text: "TÊN OUTLET:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-            { text: (report.outletName || report.eventName || '-') + "\n\n", options: { color: "334155", fontSize: 9.5, bold: true } },
-            
-            { text: "LOẠI HOẠT ĐỘNG:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-            { text: "Trưng bày (Display)\n\n", options: { color: "6366f1", bold: true, fontSize: 9.5 } },
-            
-            { text: "TRẠNG THÁI XÁC THỰC:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-            { text: `${report.guarantee} tại thời điểm viếng thăm`, options: { color: "64748b", italic: true, fontSize: 8.5 } }
-          ];
-        } else {
-          textRuns = [
-            { text: "TÊN OUTLET:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-            { text: (report.outletName || report.eventName || '-') + "\n", options: { color: "334155", fontSize: 9.0, bold: true } },
-            
-            { text: "TÊN CHƯƠNG TRÌNH:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-            { text: (report.programName || '-') + "\n", options: { color: "334155", fontSize: 9.0, bold: true } },
-            
-            { text: "THỜI GIAN DIỄN RA:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-            { text: `${formatDate(report.startDate)} - ${formatDate(report.endDate)}\n`, options: { color: "475569", fontSize: 8.5 } },
-            
-            { text: "LOẠI HÌNH HOẠT ĐỘNG:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-            { text: `${report.eventTypes ? report.eventTypes.join(', ') : '-'}\n`, options: { color: "6366f1", bold: true, fontSize: 8.5 } },
-            
-            { text: "NỘI DUNG TÓM TẮT:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-            { text: `${report.eventContent || '(Không có tóm tắt)'}\n`, options: { color: "475569", fontSize: 8.5 } },
-            
-            { text: "TRẠNG THÁI XÁC THỰC:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-            { text: `${report.guarantee} tại thời điểm viếng thăm`, options: { color: "64748b", italic: true, fontSize: 8.0 } }
-          ];
-        }
-
-        slide.addText(textRuns, {
-          x: 0.7, y: 1.35, w: 3.6, h: 4.5,
-          valign: "top"
-        });
-
-        // 3. Right side: Dynamic Image Gallery Grid
-        const galleryTitle = report.activityType === 'Display' ? 'HÌNH ẢNH MINH CHỨNG TRƯNG BÀY' : 'HÌNH ẢNH MINH CHỨNG SỰ KIỆN';
-        slide.addText(`${galleryTitle}${pageSuffix.toUpperCase()}`, {
-          x: 4.8, y: 1.2, w: 8.0, fontSize: 10, bold: true, color: "4f46e5"
-        });
-
-        const startImgIdx = slideIdx * imagesPerSlide;
-        const slideImages = images.slice(startImgIdx, startImgIdx + imagesPerSlide);
-        const imgCount = slideImages.length;
-
-        // Helper to format image object for PptxGenJS (supports path for URLs and data for Base64)
-        const getPptxImageObj = (imgSrc) => {
-          if (!imgSrc) return null;
-          if (imgSrc.startsWith('http')) {
-            // Use corsproxy.io to bypass CORS issues for remote storage images
-            return { path: `https://corsproxy.io/?${encodeURIComponent(imgSrc)}` };
-          }
-          if (imgSrc.startsWith('data:')) {
-            // Strip the MIME type prefix (e.g., "data:image/jpeg;base64,") for PptxGenJS data property
-            const commaIdx = imgSrc.indexOf(',');
-            if (commaIdx !== -1) {
-              return { data: imgSrc.substring(commaIdx + 1) };
-            }
-          }
-          return { data: imgSrc };
-        };
-
-        if (imgCount > 0) {
-          if (imgCount === 1) {
-            // 1 Image: Large centered
-            const imgData = getPptxImageObj(slideImages[0]);
-            if (imgData) slide.addImage({ ...imgData, x: 5.8, y: 1.6, w: 5.4, h: 3.6 });
-          } 
-          else if (imgCount === 2) {
-            // 2 Images: Side-by-side
-            const imgWidth = 3.6;
-            const imgHeight = 2.4;
-            const imgData1 = getPptxImageObj(slideImages[0]);
-            const imgData2 = getPptxImageObj(slideImages[1]);
-            if (imgData1) slide.addImage({ ...imgData1, x: 5.0, y: 2.2, w: imgWidth, h: imgHeight });
-            if (imgData2) slide.addImage({ ...imgData2, x: 8.8, y: 2.2, w: imgWidth, h: imgHeight });
-          } 
-          else if (imgCount === 3 || imgCount === 4) {
-            // 3 or 4 Images: 2x2 Grid
-            const imgWidth = 3.6;
-            const imgHeight = 2.3;
-            const imgData1 = getPptxImageObj(slideImages[0]);
-            const imgData2 = getPptxImageObj(slideImages[1]);
-            const imgData3 = getPptxImageObj(slideImages[2]);
-            const imgData4 = getPptxImageObj(slideImages[3]);
-            if (imgData1) slide.addImage({ ...imgData1, x: 4.9, y: 1.5, w: imgWidth, h: imgHeight });
-            if (imgData2) slide.addImage({ ...imgData2, x: 8.7, y: 1.5, w: imgWidth, h: imgHeight });
-            if (imgData3) slide.addImage({ ...imgData3, x: 4.9, y: 3.9, w: imgWidth, h: imgHeight });
-            if (imgData4) slide.addImage({ ...imgData4, x: 8.7, y: 3.9, w: imgWidth, h: imgHeight });
-          } 
-          else {
-            // 5 or 6 Images: 3x2 Grid (smaller thumbnails to fit)
-            const imgWidth = 2.4;
-            const imgHeight = 2.3;
-            const imgData1 = getPptxImageObj(slideImages[0]);
-            const imgData2 = getPptxImageObj(slideImages[1]);
-            const imgData3 = getPptxImageObj(slideImages[2]);
-            const imgData4 = getPptxImageObj(slideImages[3]);
-            const imgData5 = getPptxImageObj(slideImages[4]);
-            const imgData6 = getPptxImageObj(slideImages[5]);
-            if (imgData1) slide.addImage({ ...imgData1, x: 4.8, y: 1.5, w: imgWidth, h: imgHeight });
-            if (imgData2) slide.addImage({ ...imgData2, x: 7.4, y: 1.5, w: imgWidth, h: imgHeight });
-            if (imgData3) slide.addImage({ ...imgData3, x: 10.0, y: 1.5, w: imgWidth, h: imgHeight });
-            if (imgData4) slide.addImage({ ...imgData4, x: 4.8, y: 3.9, w: imgWidth, h: imgHeight });
-            if (imgData5) slide.addImage({ ...imgData5, x: 7.4, y: 3.9, w: imgWidth, h: imgHeight });
-            if (imgData6) slide.addImage({ ...imgData6, x: 10.0, y: 3.9, w: imgWidth, h: imgHeight });
-          }
-        } else {
-          slide.addText("Không có hình ảnh đính kèm.", {
-            x: 4.8, y: 2.5, w: 8.0, fontSize: 12, italic: true, color: "94a3b8"
-          });
-        }
-      }
+    // Pre-clean all images for all reports before building PPTX presentation
+    const reportCleanPromises = reports.map(report => {
+      const imagePromises = (report.images || []).map(imgSrc => cleanImageForExport(imgSrc));
+      return Promise.all(imagePromises).then(cleanedImages => {
+        return { ...report, cleanedImages };
+      });
     });
 
-    // Save presentation
-    pptx.writeFile({ fileName: `Diageo_Activation_Report_Export_${Date.now()}.pptx` })
+    Promise.all(reportCleanPromises)
+      .then(cleanedReports => {
+        let pptx = new PptxGenJS();
+        pptx.title = "Diageo On-Trade Activation Report";
+        pptx.layout = "LAYOUT_16x9";
+        
+        cleanedReports.forEach((report, index) => {
+          const images = report.cleanedImages || [];
+          const imagesPerSlide = 6;
+          const totalSlidesForReport = Math.max(1, Math.ceil(images.length / imagesPerSlide));
+          
+          for (let slideIdx = 0; slideIdx < totalSlidesForReport; slideIdx++) {
+            let slide = pptx.addSlide();
+            
+            // 1. Header Bar (Dark Navy)
+            slide.addShape(pptx.ShapeType.rect, {
+              x: 0, y: 0, w: "100%", h: 0.9,
+              fill: { color: "4f46e5" }
+            });
+            
+            slide.addText(`DIAGEO ON-TRADE CONTRACTED PROGRAM`, {
+              x: 0.5, y: 0.15, fontSize: 11, bold: true, color: "fbbf24"
+            });
+            
+            const pageSuffix = totalSlidesForReport > 1 ? ` (Trang ${slideIdx + 1}/${totalSlidesForReport})` : "";
+            slide.addText(`BÁO CÁO ACTIVATION #${index + 1}${pageSuffix}`, {
+              x: 0.5, y: 0.42, fontSize: 18, bold: true, color: "ffffff"
+            });
+
+            // 2. Left side: Report Metadata Card
+            slide.addShape(pptx.ShapeType.roundRect, {
+              x: 0.5, y: 1.2, w: 4.0, h: 4.8,
+              fill: { color: "f8fafc" },
+              line: { color: "cbd5e1", width: 1 },
+              radius: 0.05
+            });
+            
+            let textRuns = [];
+            if (report.activityType === 'Display') {
+              textRuns = [
+                { text: "TÊN OUTLET:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+                { text: (report.outletName || report.eventName || '-') + "\n\n", options: { color: "334155", fontSize: 9.5, bold: true } },
+                { text: "LOẠI HOẠT ĐỘNG:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+                { text: "Trưng bày (Display)\n\n", options: { color: "6366f1", bold: true, fontSize: 9.5 } },
+                { text: "TRẠNG THÁI XÁC THỰC:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+                { text: `${report.guarantee} tại thời điểm viếng thăm`, options: { color: "64748b", italic: true, fontSize: 8.5 } }
+              ];
+            } else {
+              textRuns = [
+                { text: "TÊN OUTLET:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+                { text: (report.outletName || report.eventName || '-') + "\n", options: { color: "334155", fontSize: 9.0, bold: true } },
+                { text: "TÊN CHƯƠNG TRÌNH:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+                { text: (report.programName || '-') + "\n", options: { color: "334155", fontSize: 9.0, bold: true } },
+                { text: "THỜI GIAN DIỄN RA:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+                { text: `${formatDate(report.startDate)} - ${formatDate(report.endDate)}\n`, options: { color: "475569", fontSize: 8.5 } },
+                { text: "LOẠI HÌNH HOẠT ĐỘNG:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+                { text: `${report.eventTypes ? report.eventTypes.join(', ') : '-'}\n`, options: { color: "6366f1", bold: true, fontSize: 8.5 } },
+                { text: "NỘI DUNG TÓM TẮT:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+                { text: `${report.eventContent || '(Không có tóm tắt)'}\n`, options: { color: "475569", fontSize: 8.5 } },
+                { text: "TRẠNG THÁI XÁC THỰC:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+                { text: `${report.guarantee} tại thời điểm viếng thăm`, options: { color: "64748b", italic: true, fontSize: 8.0 } }
+              ];
+            }
+
+            slide.addText(textRuns, {
+              x: 0.7, y: 1.35, w: 3.6, h: 4.5,
+              valign: "top"
+            });
+
+            // 3. Right side: Dynamic Image Gallery Grid
+            const galleryTitle = report.activityType === 'Display' ? 'HÌNH ẢNH MINH CHỨNG TRƯNG BÀY' : 'HÌNH ẢNH MINH CHỨNG SỰ KIỆN';
+            slide.addText(`${galleryTitle}${pageSuffix.toUpperCase()}`, {
+              x: 4.8, y: 1.2, w: 8.0, fontSize: 10, bold: true, color: "4f46e5"
+            });
+
+            const startImgIdx = slideIdx * imagesPerSlide;
+            const slideImages = images.slice(startImgIdx, startImgIdx + imagesPerSlide);
+            const imgCount = slideImages.length;
+
+            const drawImageWithFallback = (imgResult, options) => {
+              if (imgResult && imgResult.success) {
+                slide.addImage({ data: imgResult.base64, ...options });
+              } else {
+                slide.addText("[Ảnh lỗi hoặc không thể tải]", {
+                  ...options,
+                  fontSize: 9,
+                  color: "ef4444",
+                  align: "center",
+                  valign: "middle",
+                  fill: { color: "fee2e2" },
+                  line: { color: "fca5a5", width: 1 }
+                });
+              }
+            };
+
+            if (imgCount > 0) {
+              if (imgCount === 1) {
+                drawImageWithFallback(slideImages[0], { x: 5.8, y: 1.6, w: 5.4, h: 3.6 });
+              } 
+              else if (imgCount === 2) {
+                const imgWidth = 3.6;
+                const imgHeight = 2.4;
+                drawImageWithFallback(slideImages[0], { x: 5.0, y: 2.2, w: imgWidth, h: imgHeight });
+                drawImageWithFallback(slideImages[1], { x: 8.8, y: 2.2, w: imgWidth, h: imgHeight });
+              } 
+              else if (imgCount === 3 || imgCount === 4) {
+                const imgWidth = 3.6;
+                const imgHeight = 2.3;
+                drawImageWithFallback(slideImages[0], { x: 4.9, y: 1.5, w: imgWidth, h: imgHeight });
+                drawImageWithFallback(slideImages[1], { x: 8.7, y: 1.5, w: imgWidth, h: imgHeight });
+                drawImageWithFallback(slideImages[2], { x: 4.9, y: 3.9, w: imgWidth, h: imgHeight });
+                if (slideImages[3]) drawImageWithFallback(slideImages[3], { x: 8.7, y: 3.9, w: imgWidth, h: imgHeight });
+              } 
+              else {
+                const imgWidth = 2.4;
+                const imgHeight = 2.3;
+                drawImageWithFallback(slideImages[0], { x: 4.8, y: 1.5, w: imgWidth, h: imgHeight });
+                drawImageWithFallback(slideImages[1], { x: 7.4, y: 1.5, w: imgWidth, h: imgHeight });
+                drawImageWithFallback(slideImages[2], { x: 10.0, y: 1.5, w: imgWidth, h: imgHeight });
+                drawImageWithFallback(slideImages[3], { x: 4.8, y: 3.9, w: imgWidth, h: imgHeight });
+                if (slideImages[4]) drawImageWithFallback(slideImages[4], { x: 7.4, y: 3.9, w: imgWidth, h: imgHeight });
+                if (slideImages[5]) drawImageWithFallback(slideImages[5], { x: 10.0, y: 3.9, w: imgWidth, h: imgHeight });
+              }
+            } else {
+              slide.addText("Không có hình ảnh đính kèm.", {
+                x: 4.8, y: 2.5, w: 8.0, fontSize: 12, italic: true, color: "94a3b8"
+              });
+            }
+          }
+        });
+
+        return pptx.writeFile({ fileName: `Diageo_Activation_Report_Export_${Date.now()}.pptx` });
+      })
       .then(() => {
         showToast('Xuất PowerPoint thành công', 'File báo cáo .pptx đã được tải xuống.', 'success');
       })
