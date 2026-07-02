@@ -2680,15 +2680,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // PowerPoint Slide Export
   btnExportPPT.addEventListener('click', () => {
-    if (reports.length === 0) {
-      showToast('Khong co du lieu', 'Khong co bao cao nao de xuat.', 'warning');
+    const eventReports = reports.filter(r => r.activityType !== 'PS');
+    if (eventReports.length === 0) {
+      showToast('Không có dữ liệu', 'Không có báo cáo Trưng bày / Event nào để xuất PowerPoint.', 'warning');
       return;
     }
 
     showToast('Dang tao PPTX', 'Dang thiet lap bo cuc slide PowerPoint...', 'info', 2000);
-
-    const eventReports = reports.filter(r => r.activityType !== 'PS');
-    const psReports = reports.filter(r => r.activityType === 'PS');
 
     const eventCleanPromises = eventReports.map(report => {
       const imagePromises = (report.images || []).map(imgSrc => cleanImageForExport(imgSrc));
@@ -2703,146 +2701,82 @@ document.addEventListener('DOMContentLoaded', () => {
         pptx.title = "Diageo On-Trade Activation Report";
         pptx.layout = "LAYOUT_16x9";
 
-        // Build slide order based on original report order
-        reports.forEach((origReport, index) => {
-          if (origReport.activityType === 'PS') {
-            // PS On Trade slide with table
+        // Build slide order based on event reports only
+        cleanedEventReports.forEach((cleanedReport, index) => {
+          const images = cleanedReport.cleanedImages || [];
+          const imagesPerSlide = 6;
+          const totalSlidesForReport = Math.max(1, Math.ceil(images.length / imagesPerSlide));
+
+          for (let slideIdx = 0; slideIdx < totalSlidesForReport; slideIdx++) {
             let slide = pptx.addSlide();
 
-            slide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: "100%", h: 0.9, fill: { color: "9333ea" } });
+            slide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: "100%", h: 0.9, fill: { color: "4f46e5" } });
             slide.addText("DIAGEO ON-TRADE CONTRACTED PROGRAM", { x: 0.5, y: 0.15, fontSize: 11, bold: true, color: "fbbf24" });
-            slide.addText(`BAO CAO SO BAN PS ON TRADE #${index + 1}`, { x: 0.5, y: 0.42, fontSize: 18, bold: true, color: "ffffff" });
+            const pageSuffix = totalSlidesForReport > 1 ? ` (Trang ${slideIdx + 1}/${totalSlidesForReport})` : "";
+            slide.addText(`BAO CAO ACTIVATION #${index + 1}${pageSuffix}`, { x: 0.5, y: 0.42, fontSize: 18, bold: true, color: "ffffff" });
 
             slide.addShape(pptx.ShapeType.roundRect, {
               x: 0.5, y: 1.2, w: 4.0, h: 4.8,
               fill: { color: "f8fafc" }, line: { color: "cbd5e1", width: 1 }, radius: 0.05
             });
 
-            slide.addText([
-              { text: "TEN OUTLET:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-              { text: (origReport.outletName || '-') + "\n\n", options: { color: "334155", fontSize: 9.5, bold: true } },
-              { text: "TEN PS:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-              { text: (origReport.psName || '-') + "\n\n", options: { color: "9333ea", fontSize: 9.5, bold: true } },
-              { text: "CHUONG TRINH KM:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-              { text: (origReport.promoName || '-') + "\n\n", options: { color: "334155", fontSize: 9.0 } },
-              { text: "TI LE BAN UONG RUOU:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-              { text: (origReport.tableRatio || '-') + "\n\n", options: { color: "334155", fontSize: 9.0, bold: true } },
-              { text: "KHACH BIA / KHACH RUOU DT:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-              { text: `${origReport.beerCustCount || 0} khach / ${origReport.competitorCustCount || 0} khach\n\n`, options: { color: "334155", fontSize: 9.0 } },
-              { text: "NGAY BAO CAO:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-              { text: (origReport.reportDate ? formatDate(origReport.reportDate) : '-'), options: { color: "475569", fontSize: 9.0 } }
-            ], { x: 0.7, y: 1.35, w: 3.6, h: 4.5, valign: "top" });
+            let textRuns = [];
+            if (cleanedReport.activityType === 'Display') {
+              textRuns = [
+                { text: "TEN OUTLET:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+                { text: (cleanedReport.outletName || cleanedReport.eventName || '-') + "\n\n", options: { color: "334155", fontSize: 9.5, bold: true } },
+                { text: "LOAI HOAT DONG:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+                { text: "Trung bay (Display)\n\n", options: { color: "6366f1", bold: true, fontSize: 9.5 } },
+                { text: "TRANG THAI XAC THUC:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+                { text: `${cleanedReport.guarantee} tai thoi diem vieng tham`, options: { color: "64748b", italic: true, fontSize: 8.5 } }
+              ];
+            } else {
+              textRuns = [
+                { text: "TEN OUTLET:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+                { text: (cleanedReport.outletName || cleanedReport.eventName || '-') + "\n", options: { color: "334155", fontSize: 9.0, bold: true } },
+                { text: "TEN CHUONG TRINH:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+                { text: (cleanedReport.programName || '-') + "\n", options: { color: "334155", fontSize: 9.0, bold: true } },
+                { text: "THOI GIAN DIEN RA:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+                { text: `${formatDate(cleanedReport.startDate)} - ${formatDate(cleanedReport.endDate)}\n`, options: { color: "475569", fontSize: 8.5 } },
+                { text: "LOAI HINH HOAT DONG:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+                { text: `${cleanedReport.eventTypes ? cleanedReport.eventTypes.join(', ') : '-'}\n`, options: { color: "6366f1", bold: true, fontSize: 8.5 } },
+                { text: "NOI DUNG TOM TAT:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+                { text: `${cleanedReport.eventContent || '(Khong co tom tat)'}\n`, options: { color: "475569", fontSize: 8.5 } },
+                { text: "TRANG THAI XAC THUC:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+                { text: `${cleanedReport.guarantee} tai thoi diem vieng tham`, options: { color: "64748b", italic: true, fontSize: 8.0 } }
+              ];
+            }
 
-            slide.addText("SO LUONG SAN PHAM RUOU CONG TY BAN RA", {
-              x: 4.8, y: 1.2, w: 7.7, fontSize: 10, bold: true, color: "9333ea"
+            slide.addText(textRuns, { x: 0.7, y: 1.35, w: 3.6, h: 4.5, valign: "top" });
+
+            const galleryTitle = cleanedReport.activityType === 'Display' ? 'HINH ANH MINH CHUNG TRUNG BAY' : 'HINH ANH MINH CHUNG SU KIEN';
+            slide.addText(`${galleryTitle}${pageSuffix.toUpperCase()}`, {
+              x: 4.8, y: 1.2, w: 8.0, fontSize: 10, bold: true, color: "4f46e5"
             });
 
-            const salesMap = origReport.companyProductSales || {};
-            const skuKeys = Object.keys(salesMap);
-            if (skuKeys.length > 0) {
-              const tableRows = [
-                [
-                  { text: "Ten San Pham (SKU)", options: { bold: true, fill: "f3e8ff", color: "7e22ce" } },
-                  { text: "So luong (chai)", options: { bold: true, fill: "f3e8ff", color: "7e22ce", align: "center" } }
-                ]
-              ];
-              skuKeys.forEach(sku => {
-                tableRows.push([
-                  { text: sku, options: { fontSize: 9 } },
-                  { text: String(salesMap[sku]), options: { fontSize: 9, align: "center" } }
-                ]);
-              });
-              slide.addTable(tableRows, {
-                x: 4.8, y: 1.5, w: 7.7,
-                border: { type: 'solid', color: 'e2e8f0', width: 1 },
-                fill: "ffffff", valign: "middle"
-              });
-            } else {
-              slide.addText("Khong co du lieu san pham.", {
-                x: 4.8, y: 2.0, w: 7.7, fontSize: 11, italic: true, color: "94a3b8"
-              });
-            }
+            const startImgIdx = slideIdx * imagesPerSlide;
+            const slideImages = images.slice(startImgIdx, startImgIdx + imagesPerSlide);
 
-          } else {
-            // Event / Display slide
-            const cleanedReport = cleanedEventReports.find(e => e.id === origReport.id);
-            if (!cleanedReport) return;
+            slideImages.forEach((imgResult, imgIdx) => {
+              const col = imgIdx % 3;
+              const row = Math.floor(imgIdx / 3);
+              const imgW = 2.4, imgH = 1.8, gapX = 0.2, gapY = 0.2;
+              const posX = 4.8 + col * (imgW + gapX);
+              const posY = 1.5 + row * (imgH + gapY);
 
-            const images = cleanedReport.cleanedImages || [];
-            const imagesPerSlide = 6;
-            const totalSlidesForReport = Math.max(1, Math.ceil(images.length / imagesPerSlide));
-
-            for (let slideIdx = 0; slideIdx < totalSlidesForReport; slideIdx++) {
-              let slide = pptx.addSlide();
-
-              slide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: "100%", h: 0.9, fill: { color: "4f46e5" } });
-              slide.addText("DIAGEO ON-TRADE CONTRACTED PROGRAM", { x: 0.5, y: 0.15, fontSize: 11, bold: true, color: "fbbf24" });
-              const pageSuffix = totalSlidesForReport > 1 ? ` (Trang ${slideIdx + 1}/${totalSlidesForReport})` : "";
-              slide.addText(`BAO CAO ACTIVATION #${index + 1}${pageSuffix}`, { x: 0.5, y: 0.42, fontSize: 18, bold: true, color: "ffffff" });
-
-              slide.addShape(pptx.ShapeType.roundRect, {
-                x: 0.5, y: 1.2, w: 4.0, h: 4.8,
-                fill: { color: "f8fafc" }, line: { color: "cbd5e1", width: 1 }, radius: 0.05
-              });
-
-              let textRuns = [];
-              if (cleanedReport.activityType === 'Display') {
-                textRuns = [
-                  { text: "TEN OUTLET:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-                  { text: (cleanedReport.outletName || cleanedReport.eventName || '-') + "\n\n", options: { color: "334155", fontSize: 9.5, bold: true } },
-                  { text: "LOAI HOAT DONG:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-                  { text: "Trung bay (Display)\n\n", options: { color: "6366f1", bold: true, fontSize: 9.5 } },
-                  { text: "TRANG THAI XAC THUC:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-                  { text: `${cleanedReport.guarantee} tai thoi diem vieng tham`, options: { color: "64748b", italic: true, fontSize: 8.5 } }
-                ];
+              if (imgResult.success) {
+                slide.addImage({ data: imgResult.base64, x: posX, y: posY, w: imgW, h: imgH });
               } else {
-                textRuns = [
-                  { text: "TEN OUTLET:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-                  { text: (cleanedReport.outletName || cleanedReport.eventName || '-') + "\n", options: { color: "334155", fontSize: 9.0, bold: true } },
-                  { text: "TEN CHUONG TRINH:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-                  { text: (cleanedReport.programName || '-') + "\n", options: { color: "334155", fontSize: 9.0, bold: true } },
-                  { text: "THOI GIAN DIEN RA:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-                  { text: `${formatDate(cleanedReport.startDate)} - ${formatDate(cleanedReport.endDate)}\n`, options: { color: "475569", fontSize: 8.5 } },
-                  { text: "LOAI HINH HOAT DONG:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-                  { text: `${cleanedReport.eventTypes ? cleanedReport.eventTypes.join(', ') : '-'}\n`, options: { color: "6366f1", bold: true, fontSize: 8.5 } },
-                  { text: "NOI DUNG TOM TAT:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-                  { text: `${cleanedReport.eventContent || '(Khong co tom tat)'}\n`, options: { color: "475569", fontSize: 8.5 } },
-                  { text: "TRANG THAI XAC THUC:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-                  { text: `${cleanedReport.guarantee} tai thoi diem vieng tham`, options: { color: "64748b", italic: true, fontSize: 8.0 } }
-                ];
+                slide.addShape(pptx.ShapeType.rect, {
+                  x: posX, y: posY, w: imgW, h: imgH,
+                  fill: { color: "fee2e2" }, line: { color: "fca5a5", width: 1 }
+                });
+                slide.addText("Anh loi/ngoai tuyen", {
+                  x: posX, y: posY, w: imgW, h: imgH,
+                  fontSize: 8.5, color: "ef4444", align: "center", valign: "middle"
+                });
               }
-
-              slide.addText(textRuns, { x: 0.7, y: 1.35, w: 3.6, h: 4.5, valign: "top" });
-
-              const galleryTitle = cleanedReport.activityType === 'Display' ? 'HINH ANH MINH CHUNG TRUNG BAY' : 'HINH ANH MINH CHUNG SU KIEN';
-              slide.addText(`${galleryTitle}${pageSuffix.toUpperCase()}`, {
-                x: 4.8, y: 1.2, w: 8.0, fontSize: 10, bold: true, color: "4f46e5"
-              });
-
-              const startImgIdx = slideIdx * imagesPerSlide;
-              const slideImages = images.slice(startImgIdx, startImgIdx + imagesPerSlide);
-
-              slideImages.forEach((imgResult, imgIdx) => {
-                const col = imgIdx % 3;
-                const row = Math.floor(imgIdx / 3);
-                const imgW = 2.4, imgH = 1.8, gapX = 0.2, gapY = 0.2;
-                const posX = 4.8 + col * (imgW + gapX);
-                const posY = 1.5 + row * (imgH + gapY);
-
-                if (imgResult.success) {
-                  slide.addImage({ data: imgResult.base64, x: posX, y: posY, w: imgW, h: imgH });
-                } else {
-                  slide.addShape(pptx.ShapeType.rect, {
-                    x: posX, y: posY, w: imgW, h: imgH,
-                    fill: { color: "fee2e2" }, line: { color: "fca5a5", width: 1 }
-                  });
-                  slide.addText("Anh loi/ngoai tuyen", {
-                    x: posX, y: posY, w: imgW, h: imgH,
-                    fontSize: 8.5, color: "ef4444", align: "center", valign: "middle"
-                  });
-                }
-              });
-            }
+            });
           }
         });
 
