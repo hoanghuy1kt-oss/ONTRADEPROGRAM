@@ -117,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function initProducts() {
     if (useFirebase) {
-      db.collection('products').orderBy('brand').orderBy('sku').onSnapshot((snapshot) => {
+      db.collection('products').onSnapshot((snapshot) => {
         allProducts = [];
         snapshot.forEach((doc) => {
           const data = doc.data();
@@ -126,6 +126,13 @@ document.addEventListener('DOMContentLoaded', () => {
             brand: data.brand,
             sku: data.sku
           });
+        });
+        
+        // Sort client-side to avoid composite index requirement
+        allProducts.sort((a, b) => {
+          const brandCompare = (a.brand || '').localeCompare(b.brand || '', 'vi');
+          if (brandCompare !== 0) return brandCompare;
+          return (a.sku || '').localeCompare(b.sku || '', 'vi');
         });
         
         if (allProducts.length === 0) {
