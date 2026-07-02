@@ -266,20 +266,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const descSlot3 = document.getElementById('descSlot3');
     const uploadTitleSlot3 = document.getElementById('uploadTitleSlot3');
     const uploadBtnSlot3 = document.getElementById('uploadBtnSlot3');
+    const formTitle = document.getElementById('formTitle');
 
     if (type === 'Display') {
       eventFieldsContainer.style.display = 'none';
       totalSteps = 2;
       document.querySelector('[data-target-step="2"]').style.display = 'none';
+      if (formTitle) formTitle.textContent = 'Cập Nhật Thông Tin PS On Trade';
       
-      if (labelSlot3) labelSlot3.innerHTML = '3. Ảnh khu trưng bày <span class="required">*</span>';
-      if (descSlot3) descSlot3.textContent = 'Chụp cận cảnh quầy kệ/khu trưng bày sản phẩm Diageo (tối thiểu 2 ảnh, có thể chụp nhiều hơn).';
-      if (uploadTitleSlot3) uploadTitleSlot3.textContent = 'Kéo & thả ảnh trưng bày vào đây';
-      if (uploadBtnSlot3) uploadBtnSlot3.innerHTML = '<i class="fa-regular fa-images"></i> Chọn ảnh trưng bày';
+      if (labelSlot3) labelSlot3.innerHTML = '3. Ảnh minh chứng PS On Trade <span class="required">*</span>';
+      if (descSlot3) descSlot3.textContent = 'Chụp cận cảnh quầy kệ/khu trưng bày sản phẩm Diageo (PS On Trade) (tối thiểu 2 ảnh, có thể chụp nhiều hơn).';
+      if (uploadTitleSlot3) uploadTitleSlot3.textContent = 'Kéo & thả ảnh PS On Trade vào đây';
+      if (uploadBtnSlot3) uploadBtnSlot3.innerHTML = '<i class="fa-regular fa-images"></i> Chọn ảnh PS On Trade';
     } else {
       eventFieldsContainer.style.display = 'block';
       totalSteps = 3;
       document.querySelector('[data-target-step="2"]').style.display = 'flex';
+      if (formTitle) formTitle.textContent = 'Cập Nhật Thông Tin Sự Kiện Event Activation';
       
       if (labelSlot3) labelSlot3.innerHTML = '3. Ảnh Sự kiện/Activation <span class="required">*</span>';
       if (descSlot3) descSlot3.textContent = 'Chụp cận cảnh hình ảnh sự kiện, hoạt động liên quan đến sản phẩm Diageo (tối thiểu 2 ảnh, có thể chụp nhiều hơn).';
@@ -943,7 +946,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Create report object
         const isDisplay = document.querySelector('input[name="activityType"]:checked').value === 'Display';
         const outletVal = document.getElementById('outletName').value.trim();
-        const programVal = isDisplay ? 'Trưng bày (Display)' : document.getElementById('programName').value.trim();
+        const programVal = isDisplay ? 'PS On Trade' : document.getElementById('programName').value.trim();
         const startVal = isDisplay ? '' : document.getElementById('startDate').value;
         const endVal = isDisplay ? '' : document.getElementById('endDate').value;
         
@@ -957,9 +960,9 @@ document.addEventListener('DOMContentLoaded', () => {
           typesVal = typesList.join(', ');
           contentVal = document.getElementById('eventContent').value;
         } else {
-          typesList = ['Trưng bày (Display)'];
-          typesVal = 'Trưng bày (Display)';
-          contentVal = 'Hình ảnh trưng bày thực tế tại outlet';
+          typesList = ['PS On Trade'];
+          typesVal = 'PS On Trade';
+          contentVal = 'Hình ảnh trưng bày thực tế tại outlet (PS On Trade)';
         }
         
         const guaranteeVal = document.querySelector('input[name="guarantee"]:checked').value;
@@ -1278,7 +1281,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // Dates cell
       const tdTime = document.createElement('td');
       if (report.activityType === 'Display' || (!report.startDate && !report.endDate)) {
-        tdTime.innerHTML = `<div class="date-td text-muted" style="font-style: italic;">Không áp dụng<br>(Trưng bày)</div>`;
+        tdTime.innerHTML = `<div class="date-td text-muted" style="font-style: italic;">Không áp dụng<br>(PS On Trade)</div>`;
       } else {
         tdTime.innerHTML = `
           <div class="date-td">
@@ -1635,7 +1638,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const row = worksheet.addRow({
             id: report.id,
             outletName: report.outletName || report.eventName || '-',
-            activityType: report.activityType === 'Display' ? 'Display' : 'Event',
+            activityType: report.activityType === 'Display' ? 'PS On Trade' : 'Event Activation',
             programName: report.programName || '-',
             startDate: report.activityType === 'Display' ? '-' : (formatDate(report.startDate) || '-'),
             endDate: report.activityType === 'Display' ? '-' : (formatDate(report.endDate) || '-'),
@@ -1769,7 +1772,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 { text: "TÊN OUTLET:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
                 { text: (report.outletName || report.eventName || '-') + "\n\n", options: { color: "334155", fontSize: 9.5, bold: true } },
                 { text: "LOẠI HOẠT ĐỘNG:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-                { text: "Trưng bày (Display)\n\n", options: { color: "6366f1", bold: true, fontSize: 9.5 } },
+                { text: "PS On Trade\n\n", options: { color: "6366f1", bold: true, fontSize: 9.5 } },
                 { text: "TRẠNG THÁI XÁC THỰC:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
                 { text: `${report.guarantee} tại thời điểm viếng thăm`, options: { color: "64748b", italic: true, fontSize: 8.5 } }
               ];
@@ -1796,7 +1799,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             // 3. Right side: Dynamic Image Gallery Grid
-            const galleryTitle = report.activityType === 'Display' ? 'HÌNH ẢNH MINH CHỨNG TRƯNG BÀY' : 'HÌNH ẢNH MINH CHỨNG SỰ KIỆN';
+            const galleryTitle = report.activityType === 'Display' ? 'HÌNH ẢNH MINH CHỨNG PS ON TRADE' : 'HÌNH ẢNH MINH CHỨNG SỰ KIỆN';
             slide.addText(`${galleryTitle}${pageSuffix.toUpperCase()}`, {
               x: 4.8, y: 1.2, w: 8.0, fontSize: 10, bold: true, color: "4f46e5"
             });
