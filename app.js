@@ -1263,6 +1263,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const detailReportDateInput = document.getElementById('detailReportDateInput');
   const reportDetailBody = document.getElementById('reportDetailBody');
   const btnCancelReportDetail = document.getElementById('btnCancelReportDetail');
+  const btnEditReportDetail = document.getElementById('btnEditReportDetail');
   const btnSaveReportDetail = document.getElementById('btnSaveReportDetail');
   
   let reportFilterType = 'Event'; // Filter state for reports list
@@ -1600,15 +1601,23 @@ document.addEventListener('DOMContentLoaded', () => {
   // ----------------------------------------------------
   let currentDetailReportId = null;
 
+  let isDetailEditMode = false;
+
   function showReportDetail(reportId) {
     const report = reports.find(r => r.id === reportId);
     if (!report) return;
 
     currentDetailReportId = reportId;
+    isDetailEditMode = false;
     reportDetailModal.style.display = 'flex';
+
+    if (btnEditReportDetail) btnEditReportDetail.style.display = 'inline-flex';
+    if (btnSaveReportDetail) btnSaveReportDetail.style.display = 'none';
+    if (btnCancelReportDetail) btnCancelReportDetail.textContent = 'Đóng';
 
     if (detailReportDateInput) {
       detailReportDateInput.value = report.reportDate || (report.timestamp ? report.timestamp.split('T')[0] : '');
+      detailReportDateInput.disabled = true;
     }
 
     if (detailActivityBadge) {
@@ -1621,10 +1630,70 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    if (reportDetailBody) {
-      reportDetailBody.innerHTML = '';
+    renderReportDetailContent(report, false);
+  }
 
-      if (report.activityType === 'PS') {
+  function renderReportDetailContent(report, editMode) {
+    if (!reportDetailBody) return;
+    reportDetailBody.innerHTML = '';
+
+    if (report.activityType === 'PS') {
+      if (editMode) {
+        // Edit Mode for PS On Trade
+        let prodListHtml = '<div style="max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--border-glass); padding: 10px; border-radius: 8px; background: white; margin-top: 5px;">';
+        allProducts.forEach(prod => {
+          const qty = (report.companyProductSales || {})[prod.sku] || 0;
+          prodListHtml += `
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; border-bottom: 1px solid rgba(15, 23, 42, 0.03); padding-bottom: 4px;">
+              <span style="color: var(--text-secondary); max-width: 70%; text-align: left;">${prod.sku}</span>
+              <input type="number" class="edit-ps-qty-input input-control" data-sku="${prod.sku}" min="0" value="${qty}" style="width: 70px; padding: 4px 8px; font-size: 0.8rem; text-align: center;">
+            </div>
+          `;
+        });
+        prodListHtml += '</div>';
+
+        reportDetailBody.innerHTML = `
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; background: rgba(15, 23, 42, 0.01); padding: 15px; border-radius: 8px; border: 1px solid var(--border-glass);">
+            <div>
+              <label class="form-label" style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Tên Outlet</label>
+              <input type="text" id="editPsOutlet" class="input-control" value="${report.outletName || ''}" style="font-size: 0.85rem; padding: 6px 10px;">
+            </div>
+            <div>
+              <label class="form-label" style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Tên PS</label>
+              <input type="text" id="editPsName" class="input-control" value="${report.psName || ''}" style="font-size: 0.85rem; padding: 6px 10px;">
+            </div>
+            <div style="grid-column: span 2;">
+              <label class="form-label" style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Chương trình khuyến mãi</label>
+              <input type="text" id="editPsPromo" class="input-control" value="${report.promoName || ''}" style="font-size: 0.85rem; padding: 6px 10px;">
+            </div>
+            <div>
+              <label class="form-label" style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Tỉ lệ bàn uống rượu</label>
+              <input type="text" id="editPsRatio" class="input-control" value="${report.tableRatio || ''}" style="font-size: 0.85rem; padding: 6px 10px;">
+            </div>
+            <div>
+              <label class="form-label" style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Khách uống bia</label>
+              <input type="number" id="editPsBeerCust" class="input-control" min="0" value="${report.beerCustCount || 0}" style="font-size: 0.85rem; padding: 6px 10px;">
+            </div>
+            <div style="grid-column: span 2;">
+              <label class="form-label" style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Khách uống rượu đối thủ</label>
+              <input type="number" id="editPsCompetitorCust" class="input-control" min="0" value="${report.competitorCustCount || 0}" style="font-size: 0.85rem; padding: 6px 10px;">
+            </div>
+          </div>
+
+          <div style="margin-top: 10px;">
+            <div style="font-size: 0.8rem; font-weight: 800; color: var(--text-primary); margin-bottom: 8px;"><i class="fa-solid fa-bottle-water" style="color: #a855f7; margin-right: 6px;"></i> Số lượng rượu bán ra:</div>
+            ${prodListHtml}
+          </div>
+        `;
+
+        const editPsRatioInput = document.getElementById('editPsRatio');
+        if (editPsRatioInput) {
+          editPsRatioInput.addEventListener('input', () => {
+            editPsRatioInput.value = editPsRatioInput.value.replace(/[^0-9/]/g, '');
+          });
+        }
+      } else {
+        // Read Mode for PS On Trade
         let prodSalesHtml = '';
         if (report.companyProductSales) {
           Object.keys(report.companyProductSales).forEach(sku => {
@@ -1644,27 +1713,27 @@ document.addEventListener('DOMContentLoaded', () => {
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; background: rgba(15, 23, 42, 0.01); padding: 15px; border-radius: 8px; border: 1px solid var(--border-glass);">
             <div>
               <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Tên Outlet</div>
-              <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-primary);">${report.outletName}</div>
+              <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-primary);">${report.outletName || '-'}</div>
             </div>
             <div>
               <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Tên PS</div>
-              <div style="font-size: 0.88rem; font-weight: 700; color: #a855f7;">${report.psName}</div>
+              <div style="font-size: 0.88rem; font-weight: 700; color: #a855f7;">${report.psName || '-'}</div>
             </div>
             <div style="grid-column: span 2;">
               <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Chương trình khuyến mãi</div>
-              <div style="font-size: 0.88rem; font-weight: 600; color: var(--text-primary);">${report.promoName}</div>
+              <div style="font-size: 0.88rem; font-weight: 600; color: var(--text-primary);">${report.promoName || '-'}</div>
             </div>
             <div>
               <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Tỉ lệ bàn uống rượu</div>
-              <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-primary);">${report.tableRatio}</div>
+              <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-primary);">${report.tableRatio || '-'}</div>
             </div>
             <div>
               <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Khách uống bia</div>
-              <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-primary);">${report.beerCustCount} khách</div>
+              <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-primary);">${report.beerCustCount || 0} khách</div>
             </div>
             <div style="grid-column: span 2;">
               <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Khách uống rượu đối thủ</div>
-              <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-primary);">${report.competitorCustCount} khách</div>
+              <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-primary);">${report.competitorCustCount || 0} khách</div>
             </div>
           </div>
 
@@ -1675,7 +1744,46 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
           </div>
         `;
+      }
+    } else {
+      if (editMode) {
+        // Edit Mode for Event/Display
+        reportDetailBody.innerHTML = `
+          <div style="display: grid; grid-template-columns: 1fr; gap: 15px; background: rgba(15, 23, 42, 0.01); padding: 15px; border-radius: 8px; border: 1px solid var(--border-glass);">
+            <div>
+              <label class="form-label" style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Tên Outlet / Event</label>
+              <input type="text" id="editEventOutlet" class="input-control" value="${report.outletName || report.eventName || ''}" style="font-size: 0.85rem; padding: 6px 10px;">
+            </div>
+            <div>
+              <label class="form-label" style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Tên chương trình</label>
+              <input type="text" id="editEventProgram" class="input-control" value="${report.programName || ''}" style="font-size: 0.85rem; padding: 6px 10px;">
+            </div>
+            <div>
+              <label class="form-label" style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Loại hình hoạt động (Phân cách bằng dấu phẩy)</label>
+              <input type="text" id="editEventTypes" class="input-control" value="${(report.eventTypes || []).join(', ')}" style="font-size: 0.85rem; padding: 6px 10px;" placeholder="Ví dụ: PG, Booth, Band...">
+            </div>
+            <div>
+              <label class="form-label" style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Nội dung hoạt động</label>
+              <textarea id="editEventContent" class="input-control" style="min-height: 100px; resize: vertical; font-size: 0.85rem; padding: 8px 10px;">${report.eventContent || ''}</textarea>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div>
+                <label class="form-label" style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Ngày bắt đầu</label>
+                <input type="date" id="editEventStartDate" class="input-control" value="${report.startDate || ''}" style="font-size: 0.82rem; padding: 6px 10px;">
+              </div>
+              <div>
+                <label class="form-label" style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Ngày kết thúc</label>
+                <input type="date" id="editEventEndDate" class="input-control" value="${report.endDate || ''}" style="font-size: 0.82rem; padding: 6px 10px;">
+              </div>
+            </div>
+            <div>
+              <label class="form-label" style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Cam đoan trung thực</label>
+              <input type="text" id="editEventGuarantee" class="input-control" value="${report.guarantee || ''}" style="font-size: 0.82rem; padding: 6px 10px;">
+            </div>
+          </div>
+        `;
       } else {
+        // Read Mode for Event/Display
         let typesBadge = '';
         if (report.eventTypes) {
           typesBadge = report.eventTypes.map(t => `<span style="font-size: 0.72rem; background: rgba(79, 70, 229, 0.06); color: var(--primary-color); padding: 2px 6px; border-radius: 4px; font-weight: 600; margin-right: 4px;">${t}</span>`).join('');
@@ -1694,7 +1802,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <div style="display: grid; grid-template-columns: 1fr; gap: 15px; background: rgba(15, 23, 42, 0.01); padding: 15px; border-radius: 8px; border: 1px solid var(--border-glass);">
             <div>
               <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Tên Outlet / Event</div>
-              <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-primary);">${report.outletName || report.eventName}</div>
+              <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-primary);">${report.outletName || report.eventName || '-'}</div>
             </div>
             <div>
               <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Tên chương trình</div>
@@ -1735,10 +1843,43 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  if (btnEditReportDetail) {
+    btnEditReportDetail.addEventListener('click', () => {
+      if (!currentDetailReportId) return;
+      const report = reports.find(r => r.id === currentDetailReportId);
+      if (!report) return;
+
+      isDetailEditMode = true;
+
+      if (detailReportDateInput) detailReportDateInput.disabled = false;
+
+      if (btnEditReportDetail) btnEditReportDetail.style.display = 'none';
+      if (btnSaveReportDetail) btnSaveReportDetail.style.display = 'inline-flex';
+      if (btnCancelReportDetail) btnCancelReportDetail.textContent = 'Hủy';
+
+      renderReportDetailContent(report, true);
+    });
+  }
+
   if (btnCancelReportDetail) {
     btnCancelReportDetail.addEventListener('click', () => {
-      reportDetailModal.style.display = 'none';
-      currentDetailReportId = null;
+      if (isDetailEditMode) {
+        const report = reports.find(r => r.id === currentDetailReportId);
+        if (report) {
+          isDetailEditMode = false;
+          if (btnEditReportDetail) btnEditReportDetail.style.display = 'inline-flex';
+          if (btnSaveReportDetail) btnSaveReportDetail.style.display = 'none';
+          if (btnCancelReportDetail) btnCancelReportDetail.textContent = 'Đóng';
+          if (detailReportDateInput) {
+            detailReportDateInput.value = report.reportDate || (report.timestamp ? report.timestamp.split('T')[0] : '');
+            detailReportDateInput.disabled = true;
+          }
+          renderReportDetailContent(report, false);
+        }
+      } else {
+        reportDetailModal.style.display = 'none';
+        currentDetailReportId = null;
+      }
     });
   }
 
@@ -1754,22 +1895,111 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      if (useFirebase) {
-        db.collection('reports').doc(currentDetailReportId).update({
-          reportDate: newDateVal
-        }).then(() => {
-          reportDetailModal.style.display = 'none';
-          showToast('Đã lưu', 'Cập nhật ngày báo cáo thành công.', 'success');
-        }).catch(err => {
-          console.error("Firestore report update error:", err);
-          showToast('Lỗi', 'Không thể cập nhật ngày báo cáo.', 'error');
+      const updatedFields = {
+        reportDate: newDateVal
+      };
+
+      if (report.activityType === 'PS') {
+        const editPsOutlet = document.getElementById('editPsOutlet');
+        const editPsName = document.getElementById('editPsName');
+        const editPsPromo = document.getElementById('editPsPromo');
+        const editPsRatio = document.getElementById('editPsRatio');
+        const editPsBeerCust = document.getElementById('editPsBeerCust');
+        const editPsCompetitorCust = document.getElementById('editPsCompetitorCust');
+
+        if (!editPsOutlet || !editPsOutlet.value.trim()) {
+          showToast('Thông tin trống', 'Tên Outlet không được để trống.', 'warning');
+          return;
+        }
+        if (!editPsName || !editPsName.value.trim()) {
+          showToast('Thông tin trống', 'Tên PS không được để trống.', 'warning');
+          return;
+        }
+        if (!editPsPromo || !editPsPromo.value.trim()) {
+          showToast('Thông tin trống', 'Chương trình KM không được để trống.', 'warning');
+          return;
+        }
+        if (!editPsRatio || !editPsRatio.value.trim()) {
+          showToast('Thông tin trống', 'Tỉ lệ bàn không được để trống.', 'warning');
+          return;
+        }
+        const ratioRegex = /^\d+\/\d+$/;
+        if (!ratioRegex.test(editPsRatio.value.trim())) {
+          showToast('Định dạng sai', 'Tỉ lệ bàn phải đúng định dạng số/số (ví dụ: 12/24).', 'warning');
+          return;
+        }
+
+        updatedFields.outletName = editPsOutlet.value.trim();
+        updatedFields.psName = editPsName.value.trim();
+        updatedFields.promoName = editPsPromo.value.trim();
+        updatedFields.tableRatio = editPsRatio.value.trim();
+        updatedFields.beerCustCount = parseInt(editPsBeerCust.value) || 0;
+        updatedFields.competitorCustCount = parseInt(editPsCompetitorCust.value) || 0;
+
+        // Parse product sales quantities
+        const companyProductSales = {};
+        let totalQty = 0;
+        document.querySelectorAll('.edit-ps-qty-input').forEach(input => {
+          const sku = input.dataset.sku;
+          const qty = parseInt(input.value) || 0;
+          if (qty > 0) {
+            companyProductSales[sku] = qty;
+            totalQty += qty;
+          }
         });
+        if (totalQty === 0) {
+          showToast('Số lượng trống', 'Vui lòng nhập ít nhất 1 sản phẩm bán ra.', 'warning');
+          return;
+        }
+        updatedFields.companyProductSales = companyProductSales;
+
       } else {
-        report.reportDate = newDateVal;
+        // Event/Display
+        const editEventOutlet = document.getElementById('editEventOutlet');
+        const editEventProgram = document.getElementById('editEventProgram');
+        const editEventTypes = document.getElementById('editEventTypes');
+        const editEventContent = document.getElementById('editEventContent');
+        const editEventStartDate = document.getElementById('editEventStartDate');
+        const editEventEndDate = document.getElementById('editEventEndDate');
+        const editEventGuarantee = document.getElementById('editEventGuarantee');
+
+        if (!editEventOutlet || !editEventOutlet.value.trim()) {
+          showToast('Thông tin trống', 'Tên Outlet/Event không được để trống.', 'warning');
+          return;
+        }
+
+        updatedFields.outletName = editEventOutlet.value.trim();
+        updatedFields.eventName = editEventOutlet.value.trim();
+        updatedFields.programName = editEventProgram ? editEventProgram.value.trim() : '';
+        updatedFields.eventContent = editEventContent ? editEventContent.value.trim() : '';
+        updatedFields.startDate = editEventStartDate ? editEventStartDate.value : '';
+        updatedFields.endDate = editEventEndDate ? editEventEndDate.value : '';
+        updatedFields.guarantee = editEventGuarantee ? editEventGuarantee.value.trim() : '';
+
+        if (editEventTypes) {
+          const typesArr = editEventTypes.value.split(',').map(t => t.trim()).filter(t => t.length > 0);
+          updatedFields.eventTypes = typesArr;
+        }
+      }
+
+      if (useFirebase) {
+        db.collection('reports').doc(currentDetailReportId).update(updatedFields)
+          .then(() => {
+            Object.assign(report, updatedFields);
+            reportDetailModal.style.display = 'none';
+            showToast('Đã lưu', 'Cập nhật nội dung báo cáo thành công.', 'success');
+            renderReportsTable();
+          })
+          .catch(err => {
+            console.error("Firestore report update error:", err);
+            showToast('Lỗi', 'Không thể lưu thay đổi vào cơ sở dữ liệu đám mây.', 'error');
+          });
+      } else {
+        Object.assign(report, updatedFields);
         localStorage.setItem('diageo_reports', JSON.stringify(reports));
         reportDetailModal.style.display = 'none';
         renderReportsTable();
-        showToast('Đã lưu', 'Cập nhật ngày báo cáo thành công.', 'success');
+        showToast('Đã lưu', 'Cập nhật nội dung báo cáo thành công.', 'success');
       }
     });
   }
