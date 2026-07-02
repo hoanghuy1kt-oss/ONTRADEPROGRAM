@@ -1104,7 +1104,12 @@ textarea.input-control {
   }
   
   .app-container.admin-mode {
-    max-width: 900px; /* Wider spacious layout only for admin dashboard on laptop */
+    max-width: 1600px; /* Wider spacious layout only for admin dashboard on laptop */
+    width: 96%;
+  }
+
+  .app-container.admin-mode .report-table-wrapper {
+    max-height: 650px; /* Increase max height for table display on desktop */
   }
   
   .form-card {
