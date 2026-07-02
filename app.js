@@ -2625,12 +2625,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (filtered.length === 0) return;
 
       const item = document.createElement('div');
-      item.className = 'brand-accordion-item';
-      
-      // If there is active search, expand by default
-      if (searchVal.length > 0) {
-        item.classList.add('active');
-      }
+      item.className = 'brand-accordion-item active';
 
       const header = document.createElement('div');
       header.className = 'brand-accordion-header';
@@ -2641,9 +2636,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       const content = document.createElement('div');
       content.className = 'brand-accordion-content';
-      if (searchVal.length > 0) {
-        content.style.display = 'flex';
-      }
+      content.style.display = 'flex';
 
       filtered.forEach(prod => {
         const row = document.createElement('div');
