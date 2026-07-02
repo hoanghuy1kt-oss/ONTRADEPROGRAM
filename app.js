@@ -1149,13 +1149,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Open login modal
   btnAdminTrigger.addEventListener('click', () => {
-    adminLoginModal.classList.add('active');
-    adminPasswordInput.value = '';
-    adminPasswordInput.type = 'password';
-    btnTogglePassword.querySelector('i').className = 'fa-regular fa-eye';
-    btnTogglePassword.title = 'Hiện mật khẩu';
-    adminPasswordInput.focus();
-    clearAdminLoginError();
+    window.history.pushState({}, '', '/admin');
+    handleRouting();
   });
 
   // Close login modal
@@ -1186,6 +1181,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function handleAdminLogin() {
     const pw = adminPasswordInput.value;
     if (pw === 'diageo@123') {
+      sessionStorage.setItem('admin_authenticated', 'true');
       adminLoginModal.classList.remove('active');
       salesFormContainer.style.display = 'none';
       adminDashboard.classList.add('active');
@@ -1222,10 +1218,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Logout
   btnAdminLogout.addEventListener('click', () => {
-    adminDashboard.classList.remove('active');
-    salesFormContainer.style.display = 'block';
-    btnAdminTrigger.style.display = 'inline-flex';
-    document.querySelector('.app-container').classList.remove('admin-mode');
+    sessionStorage.removeItem('admin_authenticated');
+    window.history.pushState({}, '', '/event-activation');
+    handleRouting();
     showToast('Đã đăng xuất', 'Bạn đã rời khỏi phiên quản trị viên.', 'info');
   });
 
@@ -1869,10 +1864,49 @@ document.addEventListener('DOMContentLoaded', () => {
       });
   });
 
+  // Simple Client-side routing based on Vercel deployment paths
+  function handleRouting() {
+    const path = window.location.pathname;
+    
+    if (path === '/admin' || path === '/admin/') {
+      salesFormContainer.style.display = 'none';
+      btnAdminTrigger.style.display = 'none';
+      
+      const isAdminAuthenticated = sessionStorage.getItem('admin_authenticated') === 'true';
+      if (isAdminAuthenticated) {
+        adminDashboard.classList.add('active');
+        document.querySelector('.app-container').classList.add('admin-mode');
+        renderReportsTable();
+        renderProgramCrudList();
+      } else {
+        adminLoginModal.classList.add('active');
+        if (btnCloseLogin) btnCloseLogin.style.display = 'none';
+        adminPasswordInput.value = '';
+        adminPasswordInput.type = 'password';
+        adminPasswordInput.focus();
+        clearAdminLoginError();
+      }
+    } else {
+      salesFormContainer.style.display = 'block';
+      adminDashboard.classList.remove('active');
+      adminLoginModal.classList.remove('active');
+      if (btnCloseLogin) btnCloseLogin.style.display = 'block';
+      btnAdminTrigger.style.display = 'inline-flex';
+      document.querySelector('.app-container').classList.remove('admin-mode');
+      
+      if (path === '/' || path === '') {
+        window.history.replaceState({}, '', '/event-activation');
+      }
+    }
+  }
+
+  window.addEventListener('popstate', handleRouting);
+
   // Run initial state update
   updateStepUI();
 
   // Initialize data stores (after all DOM elements and helper functions are declared)
   initPrograms();
   initReports();
+  handleRouting();
 });
