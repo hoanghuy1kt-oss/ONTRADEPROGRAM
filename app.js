@@ -2407,6 +2407,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Case 2: Remote HTTP/HTTPS URL
     if (imgSrc.startsWith('http')) {
       const proxies = [
+        `https://images.weserv.nl/?url=${encodeURIComponent(imgSrc)}`,
+        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(imgSrc)}`,
         `https://api.allorigins.win/raw?url=${encodeURIComponent(imgSrc)}`,
         `https://corsproxy.io/?${encodeURIComponent(imgSrc)}`,
         imgSrc // direct fetch as final fallback
