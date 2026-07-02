@@ -1272,6 +1272,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnCloseLightbox = document.getElementById('btnCloseLightbox');
 
   const btnExportExcel = document.getElementById('btnExportExcel');
+  const btnExportPsExcel = document.getElementById('btnExportPsExcel');
   const btnExportPPT = document.getElementById('btnExportPPT');
   const btnClearAllReports = document.getElementById('btnClearAllReports');
 
@@ -1425,7 +1426,18 @@ document.addEventListener('DOMContentLoaded', () => {
   // 10. Reports Management & Rendering
   // ----------------------------------------------------
   function renderReportsTable() {
-    reportTableBody.innerHTML = '';
+    if (reportTableBody) reportTableBody.innerHTML = '';
+    
+    // Toggle export buttons visibility based on selected tab
+    if (reportFilterType === 'Event') {
+      if (btnExportExcel) btnExportExcel.style.display = 'inline-flex';
+      if (btnExportPPT) btnExportPPT.style.display = 'inline-flex';
+      if (btnExportPsExcel) btnExportPsExcel.style.display = 'none';
+    } else {
+      if (btnExportExcel) btnExportExcel.style.display = 'none';
+      if (btnExportPPT) btnExportPPT.style.display = 'none';
+      if (btnExportPsExcel) btnExportPsExcel.style.display = 'inline-flex';
+    }
     
     let filteredReports = [...reports];
     if (reportFilterType === 'Event') {
@@ -1435,13 +1447,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (filteredReports.length === 0) {
-      reportTableBody.innerHTML = `
-        <tr>
-          <td colspan="7">
-            <div class="no-data-msg">Không có báo cáo nào khớp với bộ lọc.</div>
-          </td>
-        </tr>
-      `;
+      if (reportTableBody) {
+        reportTableBody.innerHTML = `
+          <tr>
+            <td colspan="9">
+              <div class="no-data-msg">Không có báo cáo nào khớp với bộ lọc.</div>
+            </td>
+          </tr>
+        `;
+      }
       return;
     }
 
@@ -2178,174 +2192,90 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Excel XLSX Export with Images using ExcelJS
-  btnExportExcel.addEventListener('click', () => {
-    if (reports.length === 0) {
-      showToast('Khong co du lieu', 'Khong co bao cao nao de xuat.', 'warning');
-      return;
-    }
+  // Excel XLSX Export with Images using ExcelJS (Only for Trưng bày / Event)
+  if (btnExportExcel) {
+    btnExportExcel.addEventListener('click', () => {
+      const eventReports = reports.filter(r => r.activityType !== 'PS');
+      if (eventReports.length === 0) {
+        showToast('Không có dữ liệu', 'Không có báo cáo Trưng bày / Event nào để xuất.', 'warning');
+        return;
+      }
 
-    showToast('Dang tao XLSX', 'Dang thiet lap bang tinh...', 'info', 3000);
+      showToast('Đang tạo XLSX', 'Đang thiết lập bảng tính...', 'info', 3000);
 
-    const eventReports = reports.filter(r => r.activityType !== 'PS');
-    const psReports = reports.filter(r => r.activityType === 'PS');
-
-    const eventCleanPromises = eventReports.map(report => {
-      const imagePromises = (report.images || []).map(imgSrc => cleanImageForExport(imgSrc));
-      return Promise.all(imagePromises).then(cleanedImages => {
-        return { ...report, cleanedImages };
+      const eventCleanPromises = eventReports.map(report => {
+        const imagePromises = (report.images || []).map(imgSrc => cleanImageForExport(imgSrc));
+        return Promise.all(imagePromises).then(cleanedImages => {
+          return { ...report, cleanedImages };
+        });
       });
-    });
 
-    Promise.all(eventCleanPromises)
-      .then(cleanedEventReports => {
-        const workbook = new ExcelJS.Workbook();
+      Promise.all(eventCleanPromises)
+        .then(cleanedEventReports => {
+          const workbook = new ExcelJS.Workbook();
 
-        // Sheet 1: Event Activation
-        const wsEvent = workbook.addWorksheet('Bao cao Activation');
-        wsEvent.views = [{ showGridLines: true }];
+          // Sheet 1: Event Activation
+          const wsEvent = workbook.addWorksheet('Bao cao Activation');
+          wsEvent.views = [{ showGridLines: true }];
 
-        let maxImages = 4;
-        cleanedEventReports.forEach(r => {
-          if (r.cleanedImages && r.cleanedImages.length > maxImages) {
-            maxImages = r.cleanedImages.length;
-          }
-        });
-
-        const eventColumns = [
-          { header: 'Ma bao cao', key: 'id', width: 18 },
-          { header: 'Ten Outlet', key: 'outletName', width: 35 },
-          { header: 'Loai hoat dong', key: 'activityType', width: 18 },
-          { header: 'Ten chuong trinh', key: 'programName', width: 35 },
-          { header: 'Ngay bat dau', key: 'startDate', width: 15 },
-          { header: 'Ngay ket thuc', key: 'endDate', width: 15 },
-          { header: 'Loai hinh', key: 'eventTypes', width: 35 },
-          { header: 'Noi dung tom tat', key: 'eventContent', width: 50 },
-          { header: 'Xac thuc cam doan', key: 'guarantee', width: 20 },
-          { header: 'Thoi gian gui', key: 'timestamp', width: 22 }
-        ];
-        for (let i = 1; i <= maxImages; i++) {
-          eventColumns.push({ header: `Anh minh chung ${i}`, key: `img${i}`, width: 24 });
-        }
-        wsEvent.columns = eventColumns;
-
-        const headerRowEvent = wsEvent.getRow(1);
-        headerRowEvent.height = 30;
-        headerRowEvent.eachCell((cell) => {
-          cell.font = { bold: true, color: { argb: 'FFFFFF' }, name: 'Segoe UI', size: 11 };
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '4F46E5' } };
-          cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-          cell.border = {
-            top: { style: 'thin', color: { argb: 'CBD5E1' } },
-            left: { style: 'thin', color: { argb: 'CBD5E1' } },
-            bottom: { style: 'medium', color: { argb: '475569' } },
-            right: { style: 'thin', color: { argb: 'CBD5E1' } }
-          };
-        });
-
-        cleanedEventReports.forEach((report) => {
-          const row = wsEvent.addRow({
-            id: report.id,
-            outletName: report.outletName || report.eventName || '-',
-            activityType: report.activityType === 'Display' ? 'Display' : 'Event',
-            programName: report.programName || '-',
-            startDate: report.activityType === 'Display' ? '-' : (formatDate(report.startDate) || '-'),
-            endDate: report.activityType === 'Display' ? '-' : (formatDate(report.endDate) || '-'),
-            eventTypes: report.eventTypes ? report.eventTypes.join(', ') : '-',
-            eventContent: report.eventContent || '-',
-            guarantee: report.guarantee,
-            timestamp: new Date(report.timestamp).toLocaleString('vi-VN')
-          });
-
-          row.height = 100;
-
-          for (let colNum = 1; colNum <= eventColumns.length; colNum++) {
-            const cell = row.getCell(colNum);
-            cell.font = { name: 'Segoe UI', size: 10, color: { argb: '1E293B' } };
-            const isCenter = colNum === 1 || colNum === 3 || colNum === 5 || colNum === 6 || colNum === 9 || colNum === 10 || colNum >= 11;
-            cell.alignment = { vertical: 'middle', horizontal: isCenter ? 'center' : 'left', wrapText: true };
-            cell.border = {
-              top: { style: 'thin', color: { argb: 'F1F5F9' } },
-              left: { style: 'thin', color: { argb: 'E2E8F0' } },
-              bottom: { style: 'thin', color: { argb: 'E2E8F0' } },
-              right: { style: 'thin', color: { argb: 'E2E8F0' } }
-            };
-          }
-
-          report.cleanedImages.forEach((imgResult, imgIdx) => {
-            if (imgResult.success) {
-              try {
-                const imageId = workbook.addImage({ base64: imgResult.base64, extension: 'jpeg' });
-                wsEvent.addImage(imageId, {
-                  tl: { col: 10 + imgIdx, row: row.number - 1 },
-                  ext: { width: 120, height: 90 },
-                  editAs: 'oneCell'
-                });
-              } catch (e) {
-                console.error("Error adding image to cell:", e);
-              }
-            } else {
-              wsEvent.getCell(row.number, 11 + imgIdx).value = {
-                text: `Xem anh ${imgIdx + 1}`,
-                hyperlink: imgResult.originalSrc
-              };
+          let maxImages = 4;
+          cleanedEventReports.forEach(r => {
+            if (r.cleanedImages && r.cleanedImages.length > maxImages) {
+              maxImages = r.cleanedImages.length;
             }
           });
-        });
 
-        // Sheet 2: PS On Trade - flat raw data (one row per SKU)
-        const wsPs = workbook.addWorksheet('Bao cao PS On Trade');
-        wsPs.views = [{ showGridLines: true }];
+          const eventColumns = [
+            { header: 'Mã báo cáo', key: 'id', width: 18 },
+            { header: 'Tên Outlet', key: 'outletName', width: 35 },
+            { header: 'Loại hoạt động', key: 'activityType', width: 18 },
+            { header: 'Tên chương trình', key: 'programName', width: 35 },
+            { header: 'Ngày bắt đầu', key: 'startDate', width: 15 },
+            { header: 'Ngày kết thúc', key: 'endDate', width: 15 },
+            { header: 'Loại hình', key: 'eventTypes', width: 35 },
+            { header: 'Nội dung tóm tắt', key: 'eventContent', width: 50 },
+            { header: 'Xác thực cam đoan', key: 'guarantee', width: 20 },
+            { header: 'Thời gian gửi', key: 'timestamp', width: 22 }
+          ];
+          for (let i = 1; i <= maxImages; i++) {
+            eventColumns.push({ header: `Ảnh minh chứng ${i}`, key: `img${i}`, width: 24 });
+          }
+          wsEvent.columns = eventColumns;
 
-        const psColumns = [
-          { header: 'Ngay bao cao', key: 'reportDate', width: 15 },
-          { header: 'Ten Outlet', key: 'outletName', width: 35 },
-          { header: 'Ten PS', key: 'psName', width: 25 },
-          { header: 'Chuong trinh KM', key: 'promoName', width: 35 },
-          { header: 'Ti le ban uong ruou', key: 'tableRatio', width: 22 },
-          { header: 'Khach uong bia', key: 'beerCustCount', width: 18 },
-          { header: 'Khach ruou doi thu', key: 'competitorCustCount', width: 22 },
-          { header: 'San pham ruou cong ty', key: 'sku', width: 35 },
-          { header: 'So luong ban (chai)', key: 'qty', width: 22 },
-          { header: 'Thoi gian gui', key: 'timestamp', width: 22 }
-        ];
-        wsPs.columns = psColumns;
+          const headerRowEvent = wsEvent.getRow(1);
+          headerRowEvent.height = 30;
+          headerRowEvent.eachCell((cell) => {
+            cell.font = { bold: true, color: { argb: 'FFFFFF' }, name: 'Segoe UI', size: 11 };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '4F46E5' } };
+            cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+            cell.border = {
+              top: { style: 'thin', color: { argb: 'CBD5E1' } },
+              left: { style: 'thin', color: { argb: 'CBD5E1' } },
+              bottom: { style: 'medium', color: { argb: '475569' } },
+              right: { style: 'thin', color: { argb: 'CBD5E1' } }
+            };
+          });
 
-        const headerRowPs = wsPs.getRow(1);
-        headerRowPs.height = 30;
-        headerRowPs.eachCell((cell) => {
-          cell.font = { bold: true, color: { argb: 'FFFFFF' }, name: 'Segoe UI', size: 11 };
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '9333EA' } };
-          cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-          cell.border = {
-            top: { style: 'thin', color: { argb: 'CBD5E1' } },
-            left: { style: 'thin', color: { argb: 'CBD5E1' } },
-            bottom: { style: 'medium', color: { argb: '475569' } },
-            right: { style: 'thin', color: { argb: 'CBD5E1' } }
-          };
-        });
-
-        psReports.forEach((report) => {
-          const salesMap = report.companyProductSales || {};
-          Object.keys(salesMap).forEach((sku) => {
-            const qty = salesMap[sku];
-            const row = wsPs.addRow({
-              reportDate: report.reportDate ? formatDate(report.reportDate) : '-',
-              outletName: report.outletName || '-',
-              psName: report.psName || '-',
-              promoName: report.promoName || '-',
-              tableRatio: report.tableRatio || '-',
-              beerCustCount: report.beerCustCount || 0,
-              competitorCustCount: report.competitorCustCount || 0,
-              sku: sku,
-              qty: qty,
+          cleanedEventReports.forEach((report) => {
+            const row = wsEvent.addRow({
+              id: report.id,
+              outletName: report.outletName || report.eventName || '-',
+              activityType: report.activityType === 'Display' ? 'Display' : 'Event',
+              programName: report.programName || '-',
+              startDate: report.activityType === 'Display' ? '-' : (formatDate(report.startDate) || '-'),
+              endDate: report.activityType === 'Display' ? '-' : (formatDate(report.endDate) || '-'),
+              eventTypes: report.eventTypes ? report.eventTypes.join(', ') : '-',
+              eventContent: report.eventContent || '-',
+              guarantee: report.guarantee,
               timestamp: new Date(report.timestamp).toLocaleString('vi-VN')
             });
 
-            row.height = 24;
-            for (let colNum = 1; colNum <= psColumns.length; colNum++) {
+            row.height = 100;
+
+            for (let colNum = 1; colNum <= eventColumns.length; colNum++) {
               const cell = row.getCell(colNum);
               cell.font = { name: 'Segoe UI', size: 10, color: { argb: '1E293B' } };
-              const isCenter = colNum === 1 || colNum === 5 || colNum === 6 || colNum === 7 || colNum === 9 || colNum === 10;
+              const isCenter = colNum === 1 || colNum === 3 || colNum === 5 || colNum === 6 || colNum === 9 || colNum === 10 || colNum >= 11;
               cell.alignment = { vertical: 'middle', horizontal: isCenter ? 'center' : 'left', wrapText: true };
               cell.border = {
                 top: { style: 'thin', color: { argb: 'F1F5F9' } },
@@ -2354,27 +2284,142 @@ document.addEventListener('DOMContentLoaded', () => {
                 right: { style: 'thin', color: { argb: 'E2E8F0' } }
               };
             }
-          });
-        });
 
-        return workbook.xlsx.writeBuffer();
-      })
-      .then(buffer => {
-        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.setAttribute("href", url);
-        link.setAttribute("download", `Diageo_Reports_Export_${Date.now()}.xlsx`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        showToast('Xuat Excel thanh cong', 'File Excel (.xlsx) co 2 sheet da tai xuong.', 'success');
-      })
-      .catch(err => {
-        console.error("ExcelJS export error:", err);
-        showToast('Loi xuat Excel', 'Khong the tao file Excel.', 'error');
+            report.cleanedImages.forEach((imgResult, imgIdx) => {
+              if (imgResult.success) {
+                try {
+                  const imageId = workbook.addImage({ base64: imgResult.base64, extension: 'jpeg' });
+                  wsEvent.addImage(imageId, {
+                    tl: { col: 10 + imgIdx, row: row.number - 1 },
+                    ext: { width: 120, height: 90 },
+                    editAs: 'oneCell'
+                  });
+                } catch (e) {
+                  console.error("Error adding image to cell:", e);
+                }
+              } else {
+                wsEvent.getCell(row.number, 11 + imgIdx).value = {
+                  text: `Xem ảnh ${imgIdx + 1}`,
+                  hyperlink: imgResult.originalSrc
+                };
+              }
+            });
+          });
+
+          return workbook.xlsx.writeBuffer();
+        })
+        .then(buffer => {
+          const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.setAttribute("href", url);
+          link.setAttribute("download", `Diageo_Activation_Export_${Date.now()}.xlsx`);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          showToast('Xuất Excel thành công', 'File Excel báo cáo Trưng bày / Event đã tải xuống.', 'success');
+        })
+        .catch(err => {
+          console.error("ExcelJS export error:", err);
+          showToast('Lỗi xuất Excel', 'Không thể tạo file Excel.', 'error');
+        });
+    });
+  }
+
+  // Excel XLSX Raw Data Export (Only for PS On Trade) - One row per SKU
+  if (btnExportPsExcel) {
+    btnExportPsExcel.addEventListener('click', () => {
+      const psReports = reports.filter(r => r.activityType === 'PS');
+      if (psReports.length === 0) {
+        showToast('Không có dữ liệu', 'Không có báo cáo PS On Trade nào để xuất.', 'warning');
+        return;
+      }
+
+      showToast('Đang tạo XLSX', 'Đang thiết lập bảng tính...', 'info', 3000);
+
+      const workbook = new ExcelJS.Workbook();
+      const wsPs = workbook.addWorksheet('Bao cao PS On Trade');
+      wsPs.views = [{ showGridLines: true }];
+
+      const psColumns = [
+        { header: 'Ngày báo cáo', key: 'reportDate', width: 15 },
+        { header: 'Tên Outlet', key: 'outletName', width: 35 },
+        { header: 'Tên PS', key: 'psName', width: 25 },
+        { header: 'Chương trình KM', key: 'promoName', width: 35 },
+        { header: 'Tỉ lệ bàn uống rượu', key: 'tableRatio', width: 22 },
+        { header: 'Khách uống bia', key: 'beerCustCount', width: 18 },
+        { header: 'Khách rượu đối thủ', key: 'competitorCustCount', width: 22 },
+        { header: 'Sản phẩm rượu công ty', key: 'sku', width: 35 },
+        { header: 'Số lượng bán (chai)', key: 'qty', width: 22 },
+        { header: 'Thời gian gửi', key: 'timestamp', width: 22 }
+      ];
+      wsPs.columns = psColumns;
+
+      const headerRowPs = wsPs.getRow(1);
+      headerRowPs.height = 30;
+      headerRowPs.eachCell((cell) => {
+        cell.font = { bold: true, color: { argb: 'FFFFFF' }, name: 'Segoe UI', size: 11 };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '9333EA' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'CBD5E1' } },
+          left: { style: 'thin', color: { argb: 'CBD5E1' } },
+          bottom: { style: 'medium', color: { argb: '475569' } },
+          right: { style: 'thin', color: { argb: 'CBD5E1' } }
+        };
       });
-  });
+
+      psReports.forEach((report) => {
+        const salesMap = report.companyProductSales || {};
+        Object.keys(salesMap).forEach((sku) => {
+          const qty = salesMap[sku];
+          const row = wsPs.addRow({
+            reportDate: report.reportDate ? formatDate(report.reportDate) : '-',
+            outletName: report.outletName || '-',
+            psName: report.psName || '-',
+            promoName: report.promoName || '-',
+            tableRatio: report.tableRatio || '-',
+            beerCustCount: report.beerCustCount || 0,
+            competitorCustCount: report.competitorCustCount || 0,
+            sku: sku,
+            qty: qty,
+            timestamp: new Date(report.timestamp).toLocaleString('vi-VN')
+          });
+
+          row.height = 24;
+          for (let colNum = 1; colNum <= psColumns.length; colNum++) {
+            const cell = row.getCell(colNum);
+            cell.font = { name: 'Segoe UI', size: 10, color: { argb: '1E293B' } };
+            const isCenter = colNum === 1 || colNum === 5 || colNum === 6 || colNum === 7 || colNum === 9 || colNum === 10;
+            cell.alignment = { vertical: 'middle', horizontal: isCenter ? 'center' : 'left', wrapText: true };
+            cell.border = {
+              top: { style: 'thin', color: { argb: 'F1F5F9' } },
+              left: { style: 'thin', color: { argb: 'E2E8F0' } },
+              bottom: { style: 'thin', color: { argb: 'E2E8F0' } },
+              right: { style: 'thin', color: { argb: 'E2E8F0' } }
+            };
+          }
+        });
+      });
+
+      workbook.xlsx.writeBuffer()
+        .then(buffer => {
+          const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.setAttribute("href", url);
+          link.setAttribute("download", `Diageo_PS_OnTrade_RawData_${Date.now()}.xlsx`);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          showToast('Xuất Excel thành công', 'File Excel raw data báo cáo PS On Trade đã tải xuống.', 'success');
+        })
+        .catch(err => {
+          console.error("ExcelJS export error:", err);
+          showToast('Lỗi xuất Excel', 'Không thể tạo file Excel.', 'error');
+        });
+    });
+  }
 
   // PowerPoint Slide Export
   btnExportPPT.addEventListener('click', () => {
