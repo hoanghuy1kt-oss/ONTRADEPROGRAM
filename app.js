@@ -1904,13 +1904,19 @@ document.addEventListener('DOMContentLoaded', () => {
   // Simple Client-side routing based on Vercel deployment paths
   function handleRouting() {
     const path = window.location.pathname.toLowerCase();
+    const appContainer = document.querySelector('.app-container');
     
-    // Hide everything by default
+    // Hide everything by default and reset width classes
     if (selectionScreen) selectionScreen.style.display = 'none';
     if (psComingSoonScreen) psComingSoonScreen.style.display = 'none';
     if (salesFormContainer) salesFormContainer.style.display = 'none';
     if (adminDashboard) adminDashboard.classList.remove('active');
     if (adminLoginModal) adminLoginModal.classList.remove('active');
+    
+    if (appContainer) {
+      appContainer.classList.remove('selection-mode');
+      appContainer.classList.remove('admin-mode');
+    }
     
     if (path === '/admin' || path === '/admin/') {
       if (btnAdminTrigger) btnAdminTrigger.style.display = 'none';
@@ -1918,7 +1924,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const isAdminAuthenticated = sessionStorage.getItem('admin_authenticated') === 'true';
       if (isAdminAuthenticated) {
         if (adminDashboard) adminDashboard.classList.add('active');
-        document.querySelector('.app-container').classList.add('admin-mode');
+        if (appContainer) appContainer.classList.add('admin-mode');
         renderReportsTable();
         renderProgramCrudList();
       } else {
@@ -1933,16 +1939,14 @@ document.addEventListener('DOMContentLoaded', () => {
       if (salesFormContainer) salesFormContainer.style.display = 'block';
       if (btnCloseLogin) btnCloseLogin.style.display = 'block';
       if (btnAdminTrigger) btnAdminTrigger.style.display = 'inline-flex';
-      document.querySelector('.app-container').classList.remove('admin-mode');
     } else if (path === '/ps' || path === '/ps/') {
       if (psComingSoonScreen) psComingSoonScreen.style.display = 'flex';
       if (btnAdminTrigger) btnAdminTrigger.style.display = 'none';
-      document.querySelector('.app-container').classList.remove('admin-mode');
     } else {
       // Landing page selection
       if (selectionScreen) selectionScreen.style.display = 'block';
       if (btnAdminTrigger) btnAdminTrigger.style.display = 'none';
-      document.querySelector('.app-container').classList.remove('admin-mode');
+      if (appContainer) appContainer.classList.add('selection-mode');
     }
   }
 
