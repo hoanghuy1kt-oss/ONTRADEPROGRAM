@@ -1516,7 +1516,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (imgSrc.startsWith('data:')) {
       const commaIdx = imgSrc.indexOf(',');
       const base64 = commaIdx !== -1 ? imgSrc.substring(commaIdx + 1) : imgSrc;
-      return Promise.resolve({ success: true, base64, originalSrc: imgSrc });
+      return Promise.resolve({ success: true, base64, dataUrl: imgSrc, originalSrc: imgSrc });
     }
 
     // Case 2: Remote HTTP/HTTPS URL
@@ -1544,7 +1544,7 @@ document.addEventListener('DOMContentLoaded', () => {
               const dataUrl = reader.result;
               const commaIdx = dataUrl.indexOf(',');
               const base64 = commaIdx !== -1 ? dataUrl.substring(commaIdx + 1) : dataUrl;
-              resolve({ success: true, base64, originalSrc: imgSrc });
+              resolve({ success: true, base64, dataUrl, originalSrc: imgSrc });
             };
             reader.onerror = reject;
             reader.readAsDataURL(blob);
@@ -1807,7 +1807,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const drawImageWithFallback = (imgResult, options) => {
               if (imgResult && imgResult.success) {
-                slide.addImage({ data: imgResult.base64, type: 'jpeg', ...options });
+                slide.addImage({ path: imgResult.dataUrl, ...options });
               } else {
                 slide.addText("[Ảnh lỗi hoặc không thể tải]", {
                   ...options,
