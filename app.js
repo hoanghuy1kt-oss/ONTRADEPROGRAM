@@ -2899,6 +2899,80 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Reset PS form to empty
+  function resetPsFormState() {
+    if (psForm) psForm.reset();
+    if (psNameSelect) {
+      psNameSelect.innerHTML = '<option value="">-- Chọn Tên PS (Vui lòng chọn Outlet trước) --</option>';
+      psNameSelect.disabled = true;
+    }
+    psProductQuantities = {};
+    if (psProductSearch) psProductSearch.value = '';
+    renderPsProductGrid();
+    setPsCurrentDate();
+    
+    // Clear validation error borders
+    ['ps-outlet', 'ps-name', 'ps-promo', 'ps-ratio', 'ps-beer-cust', 'ps-competitor-cust'].forEach(f => clearPsError(f));
+    const prodErr = document.getElementById('ps-products-error');
+    if (prodErr) {
+      prodErr.style.display = 'none';
+      prodErr.textContent = '';
+    }
+  }
+
+  // Reset Main form (Event/Display) to empty
+  function resetMainFormState() {
+    const mainFormEl = document.getElementById('activationForm');
+    if (mainFormEl) mainFormEl.reset();
+    
+    // Clear checkboxes and radio style checked states
+    document.querySelectorAll('.selector-card').forEach(card => {
+      card.classList.remove('checked');
+    });
+    
+    // Reset activityType radio UI state back to default (Event)
+    const defaultEventRadio = document.getElementById('actEvent');
+    if (defaultEventRadio) {
+      defaultEventRadio.checked = true;
+      const selectorCard = defaultEventRadio.closest('.selector-card');
+      if (selectorCard) selectorCard.classList.add('checked');
+      if (typeof handleActivityTypeChange === 'function') handleActivityTypeChange('Event');
+    }
+
+    currentStep = 1;
+    if (typeof updateStepUI === 'function') updateStepUI();
+    
+    // Reset file manager state
+    uploadedImagesDisplay1 = [];
+    uploadedImagesDisplay2 = [];
+    uploadedImagesDisplay3 = [];
+    if (eventGalleryControl) eventGalleryControl.clear();
+    if (displayGallery1Control) displayGallery1Control.clear();
+    if (displayGallery2Control) displayGallery2Control.clear();
+    if (displayGallery3Control) displayGallery3Control.clear();
+    
+    // Clear validation error borders
+    document.querySelectorAll('.form-group').forEach(group => {
+      group.classList.remove('has-error');
+      const err = group.querySelector('.error-message');
+      if (err) {
+        err.style.display = 'none';
+        err.textContent = '';
+      }
+    });
+    if (galleryError) {
+      galleryError.style.display = 'none';
+      galleryError.textContent = '';
+    }
+  }
+
+  // Sanitize psRatioInput to only allow digits and slashes
+  if (psRatioInput) {
+    psRatioInput.addEventListener('input', () => {
+      psRatioInput.value = psRatioInput.value.replace(/[^0-9/]/g, '');
+    });
+  }
+
   // PS Submit validation & submit handler
   if (btnPsSubmit) {
     btnPsSubmit.addEventListener('click', () => {
@@ -3074,14 +3148,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // PS New Report reset & navigations
   if (btnPsNewReport) {
     btnPsNewReport.addEventListener('click', () => {
-      psForm.reset();
-      psNameSelect.innerHTML = '<option value="">-- Chọn Tên PS (Vui lòng chọn Outlet trước) --</option>';
-      psNameSelect.disabled = true;
-      psProductQuantities = {};
-      if (psProductSearch) psProductSearch.value = '';
-      renderPsProductGrid();
-      setPsCurrentDate();
-
+      resetPsFormState();
       if (psSuccessScreen) psSuccessScreen.style.display = 'none';
       if (psFormContainer) psFormContainer.style.display = 'block';
     });
@@ -3089,6 +3156,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (btnPsSuccessBackToSelection) {
     btnPsSuccessBackToSelection.addEventListener('click', () => {
+      resetPsFormState();
       window.history.pushState({}, '', '/');
       handleRouting();
     });
@@ -3096,6 +3164,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (btnPsBackToLanding) {
     btnPsBackToLanding.addEventListener('click', () => {
+      resetPsFormState();
       window.history.pushState({}, '', '/');
       handleRouting();
     });
@@ -3140,14 +3209,14 @@ document.addEventListener('DOMContentLoaded', () => {
         clearAdminLoginError();
       }
     } else if (path === '/event-activation' || path === '/event-activation/') {
+      resetMainFormState();
       if (salesFormContainer) salesFormContainer.style.display = 'block';
       if (btnCloseLogin) btnCloseLogin.style.display = 'block';
       if (btnAdminTrigger) btnAdminTrigger.style.display = 'inline-flex';
     } else if (path === '/ps' || path === '/ps/') {
+      resetPsFormState();
       if (psFormContainer) psFormContainer.style.display = 'block';
       if (btnAdminTrigger) btnAdminTrigger.style.display = 'inline-flex';
-      setPsCurrentDate();
-      renderPsProductGrid();
     } else {
       // Landing page selection
       if (selectionScreen) selectionScreen.style.display = 'block';

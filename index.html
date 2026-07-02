@@ -104,7 +104,7 @@
           <p class="form-subtitle">Cổng thông tin dành cho PS Team cập nhật thông tin số lượng bán của Permanent Signage tại điểm bán.</p>
         </header>
 
-        <form id="psForm" novalidate>
+        <form id="psForm" autocomplete="off" novalidate>
           <!-- Date Field (Auto captured, Read-only) -->
           <div class="form-group" id="group-ps-date">
             <label class="form-label">Ngày báo cáo (Tự động) <span class="required">*</span></label>
@@ -142,7 +142,7 @@
             <label class="form-label">Chương trình khuyến mãi <span class="required">*</span></label>
             <div class="input-wrapper">
               <i class="fa-solid fa-gift input-icon"></i>
-              <input type="text" id="psPromoInput" class="input-control" placeholder="Nhập tên chương trình khuyến mãi...">
+              <input type="text" id="psPromoInput" class="input-control" placeholder="Nhập tên chương trình khuyến mãi..." autocomplete="off">
             </div>
             <div class="error-message" id="ps-promo-error"></div>
           </div>
@@ -152,7 +152,7 @@
             <label class="form-label">Số bàn uống rượu Công ty/ Tổng số bàn bán rượu của Outlet <span class="required">*</span></label>
             <div class="input-wrapper">
               <i class="fa-solid fa-chart-pie input-icon"></i>
-              <input type="text" id="psRatioInput" class="input-control" placeholder="Nhập định dạng number/number (ví dụ: 12/24)...">
+              <input type="text" id="psRatioInput" class="input-control" placeholder="Nhập định dạng number/number (ví dụ: 12/24)..." autocomplete="off">
             </div>
             <div class="error-message" id="ps-ratio-error"></div>
           </div>
@@ -163,7 +163,7 @@
               <label class="form-label">Số lượng khách uống bia <span class="required">*</span></label>
               <div class="input-wrapper">
                 <i class="fa-solid fa-beer-mug-empty input-icon"></i>
-                <input type="number" id="psBeerCustInput" class="input-control" min="0" placeholder="Số lượng...">
+                <input type="number" id="psBeerCustInput" class="input-control" min="0" placeholder="Số lượng..." autocomplete="off">
               </div>
               <div class="error-message" id="ps-beer-cust-error"></div>
             </div>
@@ -173,7 +173,7 @@
               <label class="form-label">Khách uống rượu đối thủ <span class="required">*</span></label>
               <div class="input-wrapper">
                 <i class="fa-solid fa-wine-glass-empty input-icon"></i>
-                <input type="number" id="psCompetitorCustInput" class="input-control" min="0" placeholder="Số lượng...">
+                <input type="number" id="psCompetitorCustInput" class="input-control" min="0" placeholder="Số lượng..." autocomplete="off">
               </div>
               <div class="error-message" id="ps-competitor-cust-error"></div>
             </div>
@@ -185,7 +185,7 @@
             
             <div class="product-search-wrapper" style="margin-bottom: 12px; position: relative;">
               <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.85rem;"></i>
-              <input type="text" id="psProductSearch" class="input-control" placeholder="Tìm nhanh sản phẩm (ví dụ: JW Blue, Singleton...)..." style="padding-left: 40px; font-size: 0.85rem;">
+              <input type="text" id="psProductSearch" class="input-control" placeholder="Tìm nhanh sản phẩm (ví dụ: JW Blue, Singleton...)..." style="padding-left: 40px; font-size: 0.85rem;" autocomplete="off">
             </div>
 
             <div class="product-brands-accordion" id="psProductGrid" style="max-height: 380px; overflow-y: auto; border: 1px solid var(--border-glass); border-radius: var(--border-radius-md); padding: 15px; background: rgba(255,255,255,0.4);">
