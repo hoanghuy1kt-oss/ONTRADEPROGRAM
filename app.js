@@ -235,9 +235,59 @@ document.addEventListener('DOMContentLoaded', () => {
         card.classList.remove('checked');
       }
     });
+  // Radio interactions (Activity Type: Event/Display)
+  const activityTypeInputs = document.querySelectorAll('input[name="activityType"]');
+  activityTypeInputs.forEach(input => {
+    const card = input.closest('.selector-card');
+    
+    // Sync initial state
+    if (input.checked) {
+      card.classList.add('checked');
+    }
+
+    input.addEventListener('change', () => {
+      // Uncheck other radio cards in the group
+      activityTypeInputs.forEach(otherInput => {
+        otherInput.closest('.selector-card').classList.remove('checked');
+      });
+      
+      // Check current
+      if (input.checked) {
+        card.classList.add('checked');
+        handleActivityTypeChange(input.value);
+      }
+    });
   });
 
+  function handleActivityTypeChange(type) {
+    const labelSlot3 = document.getElementById('labelSlot3');
+    const descSlot3 = document.getElementById('descSlot3');
+    const uploadTitleSlot3 = document.getElementById('uploadTitleSlot3');
+    const uploadBtnSlot3 = document.getElementById('uploadBtnSlot3');
 
+    if (type === 'Display') {
+      eventFieldsContainer.style.display = 'none';
+      totalSteps = 2;
+      document.querySelector('[data-target-step="2"]').style.display = 'none';
+      
+      if (labelSlot3) labelSlot3.innerHTML = '3. Ảnh khu trưng bày <span class="required">*</span>';
+      if (descSlot3) descSlot3.textContent = 'Chụp cận cảnh quầy kệ/khu trưng bày sản phẩm Diageo (tối thiểu 2 ảnh, có thể chụp nhiều hơn).';
+      if (uploadTitleSlot3) uploadTitleSlot3.textContent = 'Kéo & thả ảnh trưng bày vào đây';
+      if (uploadBtnSlot3) uploadBtnSlot3.innerHTML = '<i class="fa-regular fa-images"></i> Chọn ảnh trưng bày';
+    } else {
+      eventFieldsContainer.style.display = 'block';
+      totalSteps = 3;
+      document.querySelector('[data-target-step="2"]').style.display = 'flex';
+      
+      if (labelSlot3) labelSlot3.innerHTML = '3. Ảnh Sự kiện/Activation <span class="required">*</span>';
+      if (descSlot3) descSlot3.textContent = 'Chụp cận cảnh hình ảnh sự kiện, hoạt động liên quan đến sản phẩm Diageo (tối thiểu 2 ảnh, có thể chụp nhiều hơn).';
+      if (uploadTitleSlot3) uploadTitleSlot3.textContent = 'Kéo & thả ảnh sự kiện vào đây';
+      if (uploadBtnSlot3) uploadBtnSlot3.innerHTML = '<i class="fa-regular fa-images"></i> Chọn ảnh sự kiện';
+    }
+    
+    currentStep = 1;
+    updateStepUI();
+  }
 
   // Radio interactions (Tôi cam đoan)
   const radioInputs = document.querySelectorAll('input[name="guarantee"]');
@@ -889,20 +939,26 @@ document.addEventListener('DOMContentLoaded', () => {
     Promise.all(compressPromises)
       .then(base64Images => {
         // Create report object
-        const isDisplay = false;
+        const isDisplay = document.querySelector('input[name="activityType"]:checked').value === 'Display';
         const outletVal = document.getElementById('outletName').value.trim();
-        const programVal = document.getElementById('programName').value.trim();
-        const startVal = document.getElementById('startDate').value;
-        const endVal = document.getElementById('endDate').value;
+        const programVal = isDisplay ? 'Trưng bày (Display)' : document.getElementById('programName').value.trim();
+        const startVal = isDisplay ? '' : document.getElementById('startDate').value;
+        const endVal = isDisplay ? '' : document.getElementById('endDate').value;
         
         let typesList = [];
         let typesVal = '';
         let contentVal = '';
         
-        const checkedBoxes = Array.from(document.querySelectorAll('input[name="eventType"]:checked'));
-        typesList = checkedBoxes.map(cb => cb.value);
-        typesVal = typesList.join(', ');
-        contentVal = document.getElementById('eventContent').value;
+        if (!isDisplay) {
+          const checkedBoxes = Array.from(document.querySelectorAll('input[name="eventType"]:checked'));
+          typesList = checkedBoxes.map(cb => cb.value);
+          typesVal = typesList.join(', ');
+          contentVal = document.getElementById('eventContent').value;
+        } else {
+          typesList = ['Trưng bày (Display)'];
+          typesVal = 'Trưng bày (Display)';
+          contentVal = 'Hình ảnh trưng bày thực tế tại outlet';
+        }
         
         const guaranteeVal = document.querySelector('input[name="guarantee"]:checked').value;
         const reportId = 'REP_' + Date.now();
@@ -1018,6 +1074,13 @@ document.addEventListener('DOMContentLoaded', () => {
       card.classList.remove('checked');
     });
     
+    // Reset activityType radio UI state back to default (Event)
+    const defaultEventRadio = document.getElementById('actEvent');
+    if (defaultEventRadio) {
+      defaultEventRadio.checked = true;
+      defaultEventRadio.closest('.selector-card').classList.add('checked');
+      handleActivityTypeChange('Event');
+    }
 
     // Reset file manager state
     if (eventGalleryControl) eventGalleryControl.clear();
@@ -1214,7 +1277,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // Dates cell
       const tdTime = document.createElement('td');
       if (report.activityType === 'Display' || (!report.startDate && !report.endDate)) {
-        tdTime.innerHTML = `<div class="date-td text-muted" style="font-style: italic;">Không áp dụng<br>(PS On Trade)</div>`;
+        tdTime.innerHTML = `<div class="date-td text-muted" style="font-style: italic;">Không áp dụng<br>(Trưng bày)</div>`;
       } else {
         tdTime.innerHTML = `
           <div class="date-td">
@@ -1571,7 +1634,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const row = worksheet.addRow({
             id: report.id,
             outletName: report.outletName || report.eventName || '-',
-            activityType: report.activityType === 'Display' ? 'PS On Trade' : 'Event Activation',
+            activityType: report.activityType === 'Display' ? 'Display' : 'Event',
             programName: report.programName || '-',
             startDate: report.activityType === 'Display' ? '-' : (formatDate(report.startDate) || '-'),
             endDate: report.activityType === 'Display' ? '-' : (formatDate(report.endDate) || '-'),
@@ -1705,7 +1768,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 { text: "TÊN OUTLET:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
                 { text: (report.outletName || report.eventName || '-') + "\n\n", options: { color: "334155", fontSize: 9.5, bold: true } },
                 { text: "LOẠI HOẠT ĐỘNG:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-                { text: "PS On Trade\n\n", options: { color: "6366f1", bold: true, fontSize: 9.5 } },
+                { text: "Trưng bày (Display)\n\n", options: { color: "6366f1", bold: true, fontSize: 9.5 } },
                 { text: "TRẠNG THÁI XÁC THỰC:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
                 { text: `${report.guarantee} tại thời điểm viếng thăm`, options: { color: "64748b", italic: true, fontSize: 8.5 } }
               ];
@@ -1732,7 +1795,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             // 3. Right side: Dynamic Image Gallery Grid
-            const galleryTitle = report.activityType === 'Display' ? 'HÌNH ẢNH MINH CHỨNG PS ON TRADE' : 'HÌNH ẢNH MINH CHỨNG SỰ KIỆN';
+            const galleryTitle = report.activityType === 'Display' ? 'HÌNH ẢNH MINH CHỨNG TRƯNG BÀY' : 'HÌNH ẢNH MINH CHỨNG SỰ KIỆN';
             slide.addText(`${galleryTitle}${pageSuffix.toUpperCase()}`, {
               x: 4.8, y: 1.2, w: 8.0, fontSize: 10, bold: true, color: "4f46e5"
             });
