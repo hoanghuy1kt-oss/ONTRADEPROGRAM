@@ -1521,27 +1521,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Case 2: Remote HTTP/HTTPS URL
     if (imgSrc.startsWith('http')) {
-      const proxiedUrl = `https://corsproxy.io/?${encodeURIComponent(imgSrc)}`;
-      return fetch(proxiedUrl)
-        .then(res => {
-          if (!res.ok) throw new Error("Network response was not ok");
-          return res.blob();
-        })
-        .then(blob => new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const dataUrl = reader.result;
-            const commaIdx = dataUrl.indexOf(',');
-            const base64 = commaIdx !== -1 ? dataUrl.substring(commaIdx + 1) : dataUrl;
-            resolve({ success: true, base64, originalSrc: imgSrc });
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        }))
-        .catch(err => {
-          console.error("CORS proxy fetch error for image:", err);
-          return { success: false, originalSrc: imgSrc };
-        });
+      const proxies = [
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(imgSrc)}`,
+        `https://corsproxy.io/?${encodeURIComponent(imgSrc)}`,
+        imgSrc // direct fetch as final fallback
+      ];
+
+      const fetchWithFallback = (proxyIndex) => {
+        if (proxyIndex >= proxies.length) {
+          return Promise.resolve({ success: false, originalSrc: imgSrc });
+        }
+
+        const urlToFetch = proxies[proxyIndex];
+        return fetch(urlToFetch)
+          .then(res => {
+            if (!res.ok) throw new Error("Status " + res.status);
+            return res.blob();
+          })
+          .then(blob => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const dataUrl = reader.result;
+              const commaIdx = dataUrl.indexOf(',');
+              const base64 = commaIdx !== -1 ? dataUrl.substring(commaIdx + 1) : dataUrl;
+              resolve({ success: true, base64, originalSrc: imgSrc });
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          }))
+          .catch(err => {
+            console.warn(`Proxy ${urlToFetch} failed:`, err);
+            return fetchWithFallback(proxyIndex + 1);
+          });
+      };
+
+      return fetchWithFallback(0);
     }
 
     return Promise.resolve({ success: false, originalSrc: imgSrc });
