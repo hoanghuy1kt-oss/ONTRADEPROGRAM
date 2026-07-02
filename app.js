@@ -235,6 +235,8 @@ document.addEventListener('DOMContentLoaded', () => {
         card.classList.remove('checked');
       }
     });
+  });
+
   // Radio interactions (Activity Type: Event/Display)
   const activityTypeInputs = document.querySelectorAll('input[name="activityType"]');
   activityTypeInputs.forEach(input => {
