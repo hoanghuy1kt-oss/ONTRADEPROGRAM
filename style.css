@@ -1922,6 +1922,7 @@ textarea.input-control {
   background: #ffffff;
   overflow: hidden;
   transition: var(--transition-fast);
+  flex-shrink: 0;
 }
 .brand-accordion-item.active {
   border-color: rgba(168, 85, 247, 0.3);
