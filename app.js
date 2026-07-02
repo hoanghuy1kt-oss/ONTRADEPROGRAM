@@ -1807,7 +1807,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const drawImageWithFallback = (imgResult, options) => {
               if (imgResult && imgResult.success) {
-                slide.addImage({ data: imgResult.base64, ...options });
+                slide.addImage({ data: imgResult.base64, type: 'jpeg', ...options });
               } else {
                 slide.addText("[Ảnh lỗi hoặc không thể tải]", {
                   ...options,
