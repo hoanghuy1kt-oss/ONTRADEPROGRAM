@@ -1429,6 +1429,39 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderReportsTable() {
     if (reportTableBody) reportTableBody.innerHTML = '';
     
+    // Dynamically adjust table headers based on active tab
+    const reportTable = document.getElementById('reportTable');
+    const reportTableHead = reportTable ? reportTable.querySelector('thead') : null;
+    if (reportTableHead) {
+      if (reportFilterType === 'PS') {
+        reportTableHead.innerHTML = `
+          <tr>
+            <th>Tên Outlet</th>
+            <th>Ngày</th>
+            <th>Tên chương trình</th>
+            <th>Thời gian</th>
+            <th>Loại hình</th>
+            <th>Nội dung tóm tắt</th>
+            <th>Thao tác</th>
+          </tr>
+        `;
+      } else {
+        reportTableHead.innerHTML = `
+          <tr>
+            <th>Tên Outlet</th>
+            <th>Ngày</th>
+            <th>Tên chương trình</th>
+            <th>Thời gian</th>
+            <th>Loại hình</th>
+            <th>Nội dung tóm tắt</th>
+            <th>Minh chứng</th>
+            <th>Cam đoan</th>
+            <th>Thao tác</th>
+          </tr>
+        `;
+      }
+    }
+    
     // Toggle export buttons visibility based on selected tab
     if (reportFilterType === 'Event') {
       if (btnExportExcel) btnExportExcel.style.display = 'inline-flex';
@@ -1449,9 +1482,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (filteredReports.length === 0) {
       if (reportTableBody) {
+        const colSpanCount = reportFilterType === 'PS' ? 7 : 9;
         reportTableBody.innerHTML = `
           <tr>
-            <td colspan="9">
+            <td colspan="${colSpanCount}">
               <div class="no-data-msg">Không có báo cáo nào khớp với bộ lọc.</div>
             </td>
           </tr>
@@ -1522,9 +1556,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const thumbList = document.createElement('div');
       thumbList.className = 'thumbnail-list';
       
-      if (report.activityType === 'PS') {
-        thumbList.textContent = '(Không có ảnh)';
-      } else {
+      if (report.activityType !== 'PS') {
         if (report.images && report.images.length > 0) {
           report.images.forEach(imgBase64 => {
             const img = document.createElement('img');
@@ -1542,15 +1574,17 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
           thumbList.textContent = '(Không có ảnh)';
         }
+      } else {
+        thumbList.textContent = '-';
       }
       tdGallery.appendChild(thumbList);
       
       // Guarantee cell
       const tdGuarantee = document.createElement('td');
-      if (report.activityType === 'PS') {
-        tdGuarantee.textContent = 'Tự động';
-      } else {
+      if (report.activityType !== 'PS') {
         tdGuarantee.textContent = report.guarantee;
+      } else {
+        tdGuarantee.textContent = '-';
       }
 
       // Actions cell (Thao tác)
@@ -1569,8 +1603,10 @@ document.addEventListener('DOMContentLoaded', () => {
       tr.appendChild(tdTime);
       tr.appendChild(tdTypes);
       tr.appendChild(tdContent);
-      tr.appendChild(tdGallery);
-      tr.appendChild(tdGuarantee);
+      if (reportFilterType !== 'PS') {
+        tr.appendChild(tdGallery);
+        tr.appendChild(tdGuarantee);
+      }
       tr.appendChild(tdActions);
       
       reportTableBody.appendChild(tr);
