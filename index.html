@@ -42,6 +42,60 @@
   <main class="app-container">
     
     <div class="form-card">
+      <!-- ==================== LANDING SELECTION SCREEN ==================== -->
+      <div class="selection-screen" id="selectionScreen" style="display: none;">
+        <header class="selection-header">
+          <div class="brand-badge" style="margin-bottom: 12px; display: inline-flex;">
+            <i class="fa-solid fa-shield-halved"></i>
+            <span>Diageo On-Trade Contracted Program</span>
+          </div>
+          <h1 class="selection-title">Chọn Nhóm Hoạt Động</h1>
+          <p class="selection-subtitle">Vui lòng chọn cổng cập nhật thông tin phù hợp với hoạt động của bạn tại điểm bán.</p>
+        </header>
+
+        <div class="selection-grid-cards">
+          <!-- Card 1: Event Activation -->
+          <div class="selection-card-item" id="cardEventActivation">
+            <div class="selection-card-glow"></div>
+            <div class="selection-card-icon">
+              <i class="fa-solid fa-calendar-check"></i>
+            </div>
+            <h3 class="selection-card-title">Trưng bày - Event Activation</h3>
+            <p class="selection-card-desc">Báo cáo hình ảnh trưng bày thực tế & hoạt động sự kiện/activation tại các điểm bán đã ký kết.</p>
+            <span class="selection-card-btn">Truy cập cổng <i class="fa-solid fa-arrow-right"></i></span>
+          </div>
+
+          <!-- Card 2: PS On Trade -->
+          <div class="selection-card-item" id="cardPSOnTrade">
+            <div class="selection-card-glow"></div>
+            <div class="selection-card-icon" style="background: rgba(168, 85, 247, 0.1); color: #a855f7;">
+              <i class="fa-solid fa-store"></i>
+            </div>
+            <h3 class="selection-card-title">PS On Trade</h3>
+            <p class="selection-card-desc">Cập nhật và theo dõi các vật phẩm quảng cáo cố định (Permanent Signage) tại điểm bán.</p>
+            <span class="selection-card-btn" style="background: linear-gradient(135deg, #a855f7, #7c3aed); box-shadow: 0 4px 12px rgba(168, 85, 247, 0.2);">Truy cập cổng <i class="fa-solid fa-arrow-right"></i></span>
+          </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 40px;">
+          <button type="button" class="btn-admin-link" id="btnSelectionAdminTrigger">
+            <i class="fa-solid fa-lock"></i> Cổng quản trị viên
+          </button>
+        </div>
+      </div>
+
+      <!-- ==================== PS COMING SOON SCREEN ==================== -->
+      <div class="selection-screen" id="psComingSoonScreen" style="display: none; justify-content: center; align-items: center; min-height: 400px; text-align: center; flex-direction: column; padding: 40px 20px;">
+        <div class="selection-card-icon" style="background: rgba(168, 85, 247, 0.1); color: #a855f7; width: 80px; height: 80px; font-size: 2.2rem; margin-bottom: 24px; border-radius: 20px;">
+          <i class="fa-solid fa-screwdriver-wrench"></i>
+        </div>
+        <h2 class="selection-title" style="font-size: 2rem; margin-bottom: 12px;">Cổng PS On Trade</h2>
+        <p class="selection-subtitle" style="max-width: 500px; margin-bottom: 30px;">Hệ thống cập nhật thông tin Permanent Signage (PS On Trade) đang được xây dựng và sẽ ra mắt trong thời gian sớm nhất.</p>
+        <button type="button" class="btn btn-secondary" id="btnBackToSelection" style="border-radius: 10px; padding: 10px 20px; font-weight: 600;">
+          <i class="fa-solid fa-chevron-left"></i> Quay lại trang chọn
+        </button>
+      </div>
+
       <div id="salesFormContainer">
         <!-- Premium Header Section -->
         <header class="form-header">

@@ -1124,6 +1124,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const adminDashboard = document.getElementById('adminDashboard');
   const salesFormContainer = document.getElementById('salesFormContainer');
   const btnAdminLogout = document.getElementById('btnAdminLogout');
+
+  // Landing page selection elements
+  const selectionScreen = document.getElementById('selectionScreen');
+  const psComingSoonScreen = document.getElementById('psComingSoonScreen');
+  const cardEventActivation = document.getElementById('cardEventActivation');
+  const cardPSOnTrade = document.getElementById('cardPSOnTrade');
+  const btnSelectionAdminTrigger = document.getElementById('btnSelectionAdminTrigger');
+  const btnBackToSelection = document.getElementById('btnBackToSelection');
   
   const adminTabs = document.querySelectorAll('.admin-tab');
   const adminTabContents = document.querySelectorAll('.admin-tab-content');
@@ -1146,6 +1154,35 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnExportExcel = document.getElementById('btnExportExcel');
   const btnExportPPT = document.getElementById('btnExportPPT');
   const btnClearAllReports = document.getElementById('btnClearAllReports');
+
+  // Selection Screen events
+  if (cardEventActivation) {
+    cardEventActivation.addEventListener('click', () => {
+      window.history.pushState({}, '', '/event-activation');
+      handleRouting();
+    });
+  }
+
+  if (cardPSOnTrade) {
+    cardPSOnTrade.addEventListener('click', () => {
+      window.history.pushState({}, '', '/PS');
+      handleRouting();
+    });
+  }
+
+  if (btnSelectionAdminTrigger) {
+    btnSelectionAdminTrigger.addEventListener('click', () => {
+      window.history.pushState({}, '', '/admin');
+      handleRouting();
+    });
+  }
+
+  if (btnBackToSelection) {
+    btnBackToSelection.addEventListener('click', () => {
+      window.history.pushState({}, '', '/');
+      handleRouting();
+    });
+  }
 
   // Open login modal
   btnAdminTrigger.addEventListener('click', () => {
@@ -1866,37 +1903,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Simple Client-side routing based on Vercel deployment paths
   function handleRouting() {
-    const path = window.location.pathname;
+    const path = window.location.pathname.toLowerCase();
+    
+    // Hide everything by default
+    if (selectionScreen) selectionScreen.style.display = 'none';
+    if (psComingSoonScreen) psComingSoonScreen.style.display = 'none';
+    if (salesFormContainer) salesFormContainer.style.display = 'none';
+    if (adminDashboard) adminDashboard.classList.remove('active');
+    if (adminLoginModal) adminLoginModal.classList.remove('active');
     
     if (path === '/admin' || path === '/admin/') {
-      salesFormContainer.style.display = 'none';
-      btnAdminTrigger.style.display = 'none';
+      if (btnAdminTrigger) btnAdminTrigger.style.display = 'none';
       
       const isAdminAuthenticated = sessionStorage.getItem('admin_authenticated') === 'true';
       if (isAdminAuthenticated) {
-        adminDashboard.classList.add('active');
+        if (adminDashboard) adminDashboard.classList.add('active');
         document.querySelector('.app-container').classList.add('admin-mode');
         renderReportsTable();
         renderProgramCrudList();
       } else {
-        adminLoginModal.classList.add('active');
+        if (adminLoginModal) adminLoginModal.classList.add('active');
         if (btnCloseLogin) btnCloseLogin.style.display = 'none';
         adminPasswordInput.value = '';
         adminPasswordInput.type = 'password';
         adminPasswordInput.focus();
         clearAdminLoginError();
       }
-    } else {
-      salesFormContainer.style.display = 'block';
-      adminDashboard.classList.remove('active');
-      adminLoginModal.classList.remove('active');
+    } else if (path === '/event-activation' || path === '/event-activation/') {
+      if (salesFormContainer) salesFormContainer.style.display = 'block';
       if (btnCloseLogin) btnCloseLogin.style.display = 'block';
-      btnAdminTrigger.style.display = 'inline-flex';
+      if (btnAdminTrigger) btnAdminTrigger.style.display = 'inline-flex';
       document.querySelector('.app-container').classList.remove('admin-mode');
-      
-      if (path === '/' || path === '') {
-        window.history.replaceState({}, '', '/event-activation');
-      }
+    } else if (path === '/ps' || path === '/ps/') {
+      if (psComingSoonScreen) psComingSoonScreen.style.display = 'flex';
+      if (btnAdminTrigger) btnAdminTrigger.style.display = 'none';
+      document.querySelector('.app-container').classList.remove('admin-mode');
+    } else {
+      // Landing page selection
+      if (selectionScreen) selectionScreen.style.display = 'block';
+      if (btnAdminTrigger) btnAdminTrigger.style.display = 'none';
+      document.querySelector('.app-container').classList.remove('admin-mode');
     }
   }
 
