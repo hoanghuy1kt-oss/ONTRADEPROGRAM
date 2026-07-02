@@ -1633,8 +1633,9 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Error adding local image to Excel cell:", e);
           }
         } else if (imgSrc.startsWith('http')) {
-          // If it is a remote URL, fetch and convert to Base64
-          const promise = fetch(imgSrc)
+          // If it is a remote URL, fetch via corsproxy.io to avoid CORS issues and convert to Base64
+          const proxiedUrl = `https://corsproxy.io/?${encodeURIComponent(imgSrc)}`;
+          const promise = fetch(proxiedUrl)
             .then(res => res.blob())
             .then(blob => new Promise((resolve, reject) => {
               const reader = new FileReader();
@@ -1794,7 +1795,18 @@ document.addEventListener('DOMContentLoaded', () => {
         // Helper to format image object for PptxGenJS (supports path for URLs and data for Base64)
         const getPptxImageObj = (imgSrc) => {
           if (!imgSrc) return null;
-          return imgSrc.startsWith('http') ? { path: imgSrc } : { data: imgSrc };
+          if (imgSrc.startsWith('http')) {
+            // Use corsproxy.io to bypass CORS issues for remote storage images
+            return { path: `https://corsproxy.io/?${encodeURIComponent(imgSrc)}` };
+          }
+          if (imgSrc.startsWith('data:')) {
+            // Strip the MIME type prefix (e.g., "data:image/jpeg;base64,") for PptxGenJS data property
+            const commaIdx = imgSrc.indexOf(',');
+            if (commaIdx !== -1) {
+              return { data: imgSrc.substring(commaIdx + 1) };
+            }
+          }
+          return { data: imgSrc };
         };
 
         if (imgCount > 0) {
