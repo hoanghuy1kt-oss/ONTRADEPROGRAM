@@ -1444,6 +1444,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const tdOutlet = document.createElement('td');
       tdOutlet.innerHTML = `<div class="event-name-td">${report.outletName || report.eventName || '-'}</div>`;
 
+      // Date cell
+      const tdDate = document.createElement('td');
+      const dateVal = report.reportDate || (report.timestamp ? report.timestamp.split('T')[0] : null);
+      tdDate.innerHTML = dateVal
+        ? `<div class="date-td" style="font-weight:600; color:var(--text-primary); white-space:nowrap;">${formatDate(dateVal)}</div>`
+        : `<div class="date-td text-muted" style="font-style:italic;">—</div>`;
+
       // Program cell
       const tdProgram = document.createElement('td');
       if (report.activityType === 'PS') {
@@ -1530,6 +1537,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       
       tr.appendChild(tdOutlet);
+      tr.appendChild(tdDate);
       tr.appendChild(tdProgram);
       tr.appendChild(tdTime);
       tr.appendChild(tdTypes);
