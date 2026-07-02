@@ -1102,6 +1102,12 @@ textarea.input-control {
   body {
     padding: 30px;
   }
+
+  body.admin-mode {
+    align-items: flex-start;
+    padding-top: 40px;
+    padding-bottom: 40px;
+  }
   
   .app-container.admin-mode {
     max-width: 1600px; /* Wider spacious layout only for admin dashboard on laptop */

@@ -1341,6 +1341,7 @@ document.addEventListener('DOMContentLoaded', () => {
       adminDashboard.classList.add('active');
       btnAdminTrigger.style.display = 'none';
       document.querySelector('.app-container').classList.add('admin-mode');
+      document.body.classList.add('admin-mode');
       
       // Load and render data
       renderReportsTable();
@@ -3070,6 +3071,7 @@ document.addEventListener('DOMContentLoaded', () => {
       appContainer.classList.remove('selection-mode');
       appContainer.classList.remove('admin-mode');
     }
+    document.body.classList.remove('admin-mode');
     
     if (path === '/admin' || path === '/admin/') {
       if (btnAdminTrigger) btnAdminTrigger.style.display = 'none';
@@ -3078,6 +3080,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (isAdminAuthenticated) {
         if (adminDashboard) adminDashboard.classList.add('active');
         if (appContainer) appContainer.classList.add('admin-mode');
+        document.body.classList.add('admin-mode');
         renderReportsTable();
         renderProgramCrudList();
       } else {
