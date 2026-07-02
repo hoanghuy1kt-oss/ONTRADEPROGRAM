@@ -121,11 +121,13 @@ document.addEventListener('DOMContentLoaded', () => {
         allProducts = [];
         snapshot.forEach((doc) => {
           const data = doc.data();
-          allProducts.push({
-            id: doc.id,
-            brand: data.brand,
-            sku: data.sku
-          });
+          if (data.brand && data.sku) {
+            allProducts.push({
+              id: doc.id,
+              brand: data.brand,
+              sku: data.sku
+            });
+          }
         });
         
         // Sort client-side to avoid composite index requirement
@@ -147,7 +149,8 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       const stored = localStorage.getItem('diageo_products');
       if (stored) {
-        allProducts = JSON.parse(stored);
+        const temp = JSON.parse(stored);
+        allProducts = temp.filter(p => p && p.brand && p.sku);
         if (allProducts.length === 0) {
           seedProducts();
         } else {
