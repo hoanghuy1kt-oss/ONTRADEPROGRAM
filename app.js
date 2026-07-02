@@ -1265,7 +1265,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnCancelReportDetail = document.getElementById('btnCancelReportDetail');
   const btnSaveReportDetail = document.getElementById('btnSaveReportDetail');
   
-  let reportFilterType = 'all'; // Filter state for reports list
+  let reportFilterType = 'Event'; // Filter state for reports list
   
   const lightboxOverlay = document.getElementById('lightboxOverlay');
   const lightboxImg = document.getElementById('lightboxImg');
