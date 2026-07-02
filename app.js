@@ -1640,11 +1640,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (report.activityType === 'PS') {
       if (editMode) {
         // Edit Mode for PS On Trade
-        let prodListHtml = '<div style="max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--border-glass); padding: 10px; border-radius: 8px; background: white; margin-top: 5px;">';
+        let prodListHtml = '<div id="editReportProdList" style="max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--border-glass); padding: 10px; border-radius: 8px; background: white; margin-top: 5px;">';
         allProducts.forEach(prod => {
           const qty = (report.companyProductSales || {})[prod.sku] || 0;
           prodListHtml += `
-            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; border-bottom: 1px solid rgba(15, 23, 42, 0.03); padding-bottom: 4px;">
+            <div class="edit-prod-row" data-sku="${prod.sku.toLowerCase()}" data-brand="${prod.brand.toLowerCase()}" style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; border-bottom: 1px solid rgba(15, 23, 42, 0.03); padding-bottom: 4px;">
               <span style="color: var(--text-secondary); max-width: 70%; text-align: left;">${prod.sku}</span>
               <input type="number" class="edit-ps-qty-input input-control" data-sku="${prod.sku}" min="0" value="${qty}" style="width: 70px; padding: 4px 8px; font-size: 0.8rem; text-align: center;">
             </div>
@@ -1682,6 +1682,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
           <div style="margin-top: 10px;">
             <div style="font-size: 0.8rem; font-weight: 800; color: var(--text-primary); margin-bottom: 8px;"><i class="fa-solid fa-bottle-water" style="color: #a855f7; margin-right: 6px;"></i> Số lượng rượu bán ra:</div>
+            
+            <div class="product-search-wrapper" style="margin-bottom: 8px; position: relative;">
+              <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.8rem;"></i>
+              <input type="text" id="editReportProductSearch" class="input-control" placeholder="Tìm nhanh sản phẩm để sửa số lượng..." style="padding-left: 32px; font-size: 0.8rem; height: 32px;" autocomplete="off">
+            </div>
+
             ${prodListHtml}
           </div>
         `;
@@ -1690,6 +1696,25 @@ document.addEventListener('DOMContentLoaded', () => {
         if (editPsRatioInput) {
           editPsRatioInput.addEventListener('input', () => {
             editPsRatioInput.value = editPsRatioInput.value.replace(/[^0-9/]/g, '');
+          });
+        }
+
+        // Real-time product search inside edit modal
+        const searchInput = document.getElementById('editReportProductSearch');
+        const prodList = document.getElementById('editReportProdList');
+        if (searchInput && prodList) {
+          searchInput.addEventListener('input', () => {
+            const query = searchInput.value.trim().toLowerCase();
+            const rows = prodList.querySelectorAll('.edit-prod-row');
+            rows.forEach(row => {
+              const sku = row.dataset.sku || '';
+              const brand = row.dataset.brand || '';
+              if (sku.includes(query) || brand.includes(query)) {
+                row.style.display = 'flex';
+              } else {
+                row.style.display = 'none';
+              }
+            });
           });
         }
       } else {
