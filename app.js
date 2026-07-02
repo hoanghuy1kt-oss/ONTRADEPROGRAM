@@ -1497,7 +1497,7 @@ document.addEventListener('DOMContentLoaded', () => {
       thumbList.className = 'thumbnail-list';
       
       if (report.activityType === 'PS') {
-        thumbList.innerHTML = `<button type="button" class="btn btn-secondary btn-detail-view" style="padding: 4px 8px; font-size: 0.72rem; border-radius: 4px;" data-id="${report.id}"><i class="fa-solid fa-eye"></i> Chi tiết</button>`;
+        thumbList.textContent = '(Không có ảnh)';
       } else {
         if (report.images && report.images.length > 0) {
           report.images.forEach(imgBase64 => {
@@ -1516,15 +1516,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
           thumbList.textContent = '(Không có ảnh)';
         }
-        
-        // Add detail button too
-        const btnDetail = document.createElement('button');
-        btnDetail.type = 'button';
-        btnDetail.className = 'btn btn-secondary btn-detail-view';
-        btnDetail.style.cssText = 'padding: 4px 8px; font-size: 0.72rem; border-radius: 4px; display: block; margin-top: 6px;';
-        btnDetail.innerHTML = '<i class="fa-solid fa-eye"></i> Chi tiết';
-        btnDetail.dataset.id = report.id;
-        thumbList.appendChild(btnDetail);
       }
       tdGallery.appendChild(thumbList);
       
@@ -1535,6 +1526,16 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         tdGuarantee.textContent = report.guarantee;
       }
+
+      // Actions cell (Thao tác)
+      const tdActions = document.createElement('td');
+      const btnDetail = document.createElement('button');
+      btnDetail.type = 'button';
+      btnDetail.className = 'btn btn-secondary btn-detail-view';
+      btnDetail.style.cssText = 'padding: 4px 8px; font-size: 0.72rem; border-radius: 4px; white-space: nowrap;';
+      btnDetail.innerHTML = '<i class="fa-solid fa-eye"></i> Chi tiết';
+      btnDetail.dataset.id = report.id;
+      tdActions.appendChild(btnDetail);
       
       tr.appendChild(tdOutlet);
       tr.appendChild(tdDate);
@@ -1544,6 +1545,7 @@ document.addEventListener('DOMContentLoaded', () => {
       tr.appendChild(tdContent);
       tr.appendChild(tdGallery);
       tr.appendChild(tdGuarantee);
+      tr.appendChild(tdActions);
       
       reportTableBody.appendChild(tr);
     });
@@ -2717,7 +2719,9 @@ document.addEventListener('DOMContentLoaded', () => {
     activePsItemIndex = -1;
 
     const filtered = samplePrograms.filter(prog => 
-      prog.name.toLowerCase().includes(filterText.toLowerCase())
+      prog.name.toLowerCase().includes(filterText.toLowerCase()) &&
+      prog.psNames &&
+      prog.psNames.length > 0
     );
 
     if (filtered.length === 0) {
@@ -2794,9 +2798,12 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         if (activePsItemIndex >= 0 && activePsItemIndex < items.length) {
           const index = parseInt(items[activePsItemIndex].dataset.index);
-          const prog = samplePrograms.filter(prog => 
-            prog.name.toLowerCase().includes(psOutletInput.value.toLowerCase())
-          )[index];
+          const filteredForKey = samplePrograms.filter(prog => 
+            prog.name.toLowerCase().includes(psOutletInput.value.toLowerCase()) &&
+            prog.psNames &&
+            prog.psNames.length > 0
+          );
+          const prog = filteredForKey[index];
           if (prog) selectPsOutlet(prog);
         }
       } else if (e.key === 'Escape') {
