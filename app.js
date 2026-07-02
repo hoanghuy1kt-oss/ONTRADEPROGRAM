@@ -1265,6 +1265,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnCancelReportDetail = document.getElementById('btnCancelReportDetail');
   const btnEditReportDetail = document.getElementById('btnEditReportDetail');
   const btnSaveReportDetail = document.getElementById('btnSaveReportDetail');
+  const btnDeleteReportDetail = document.getElementById('btnDeleteReportDetail');
   
   let reportFilterType = 'Event'; // Filter state for reports list
   
@@ -1648,6 +1649,7 @@ document.addEventListener('DOMContentLoaded', () => {
     reportDetailModal.style.display = 'flex';
 
     if (btnEditReportDetail) btnEditReportDetail.style.display = 'inline-flex';
+    if (btnDeleteReportDetail) btnDeleteReportDetail.style.display = 'inline-flex';
     if (btnSaveReportDetail) btnSaveReportDetail.style.display = 'none';
     if (btnCancelReportDetail) btnCancelReportDetail.textContent = 'Đóng';
 
@@ -1915,6 +1917,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (detailReportDateInput) detailReportDateInput.disabled = false;
 
       if (btnEditReportDetail) btnEditReportDetail.style.display = 'none';
+      if (btnDeleteReportDetail) btnDeleteReportDetail.style.display = 'none';
       if (btnSaveReportDetail) btnSaveReportDetail.style.display = 'inline-flex';
       if (btnCancelReportDetail) btnCancelReportDetail.textContent = 'Hủy';
 
@@ -1929,6 +1932,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (report) {
           isDetailEditMode = false;
           if (btnEditReportDetail) btnEditReportDetail.style.display = 'inline-flex';
+          if (btnDeleteReportDetail) btnDeleteReportDetail.style.display = 'inline-flex';
           if (btnSaveReportDetail) btnSaveReportDetail.style.display = 'none';
           if (btnCancelReportDetail) btnCancelReportDetail.textContent = 'Đóng';
           if (detailReportDateInput) {
@@ -1940,6 +1944,55 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         reportDetailModal.style.display = 'none';
         currentDetailReportId = null;
+      }
+    });
+  }
+
+  if (btnDeleteReportDetail) {
+    btnDeleteReportDetail.addEventListener('click', () => {
+      if (!currentDetailReportId) return;
+      const report = reports.find(r => r.id === currentDetailReportId);
+      if (!report) return;
+
+      const confirmDel = confirm("Bạn có chắc chắn muốn xóa báo cáo này?\nHành động này không thể hoàn tác.");
+      if (!confirmDel) return;
+
+      showToast('Đang xóa', 'Đang xóa báo cáo...', 'info', 2000);
+
+      if (useFirebase) {
+        // Try deleting images from Firebase Storage
+        if (report.images && report.images.length > 0) {
+          report.images.forEach(imgUrl => {
+            try {
+              if (imgUrl.startsWith('http')) {
+                const fileRef = storage.refFromURL(imgUrl);
+                fileRef.delete().catch(err => console.warn("Failed to delete storage image:", err));
+              }
+            } catch (e) {
+              console.warn("Could not parse image URL for deletion:", e);
+            }
+          });
+        }
+
+        db.collection('reports').doc(currentDetailReportId).delete()
+          .then(() => {
+            reports = reports.filter(r => r.id !== currentDetailReportId);
+            reportDetailModal.style.display = 'none';
+            currentDetailReportId = null;
+            showToast('Đã xóa', 'Xóa báo cáo thành công.', 'success');
+            renderReportsTable();
+          })
+          .catch(err => {
+            console.error("Firestore report delete error:", err);
+            showToast('Lỗi', 'Không thể xóa báo cáo từ cơ sở dữ liệu.', 'error');
+          });
+      } else {
+        reports = reports.filter(r => r.id !== currentDetailReportId);
+        localStorage.setItem('diageo_reports', JSON.stringify(reports));
+        reportDetailModal.style.display = 'none';
+        currentDetailReportId = null;
+        showToast('Đã xóa', 'Xóa báo cáo thành công.', 'success');
+        renderReportsTable();
       }
     });
   }
