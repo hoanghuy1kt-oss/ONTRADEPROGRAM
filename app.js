@@ -2800,8 +2800,9 @@ document.addEventListener('DOMContentLoaded', () => {
               const posX = 4.8 + col * (imgW + gapX);
               const posY = 1.5 + row * (imgH + gapY);
 
-              if (imgResult.success) {
-                slide.addImage({ data: imgResult.base64, x: posX, y: posY, w: imgW, h: imgH });
+              if (imgResult.success && imgResult.dataUrl) {
+                const pptImgData = imgResult.dataUrl.replace('data:', '');
+                slide.addImage({ data: pptImgData, x: posX, y: posY, w: imgW, h: imgH });
               } else {
                 slide.addShape(pptx.ShapeType.rect, {
                   x: posX, y: posY, w: imgW, h: imgH,
