@@ -86,19 +86,198 @@
         </div>
       </div>
 
-      <!-- ==================== PS COMING SOON SCREEN ==================== -->
-      <div class="selection-screen" id="psComingSoonScreen" style="display: none; justify-content: center; align-items: center; min-height: 400px; text-align: center; flex-direction: column; padding: 40px 20px;">
-        <div class="selection-card-icon" style="background: rgba(168, 85, 247, 0.1); color: #a855f7; width: 80px; height: 80px; font-size: 2.2rem; margin-bottom: 24px; border-radius: 20px;">
-          <i class="fa-solid fa-screwdriver-wrench"></i>
+      <!-- ==================== PS ON TRADE FORM CONTAINER ==================== -->
+      <div id="psFormContainer" style="display: none;">
+        <!-- Back to Selection Screen Button -->
+        <div class="back-to-landing-wrapper">
+          <button type="button" class="btn-back-landing" id="btnPsBackToLanding">
+            <i class="fa-solid fa-arrow-left"></i> Quay lại trang chọn
+          </button>
         </div>
-        <h2 class="selection-title" style="font-size: 2rem; margin-bottom: 12px;">Cổng PS On Trade</h2>
-        <p class="selection-subtitle" style="max-width: 500px; margin-bottom: 30px;">Hệ thống cập nhật thông tin số bán của PS (Permanent Signage) đang được xây dựng và sẽ ra mắt trong thời gian sớm nhất.</p>
-        <button type="button" class="btn btn-secondary" id="btnBackToSelection" style="border-radius: 10px; padding: 10px 20px; font-weight: 600;">
-          <i class="fa-solid fa-chevron-left"></i> Quay lại trang chọn
-        </button>
+
+        <header class="form-header">
+          <div class="brand-badge" style="background: rgba(168, 85, 247, 0.1); color: #a855f7; display: inline-flex;">
+            <i class="fa-solid fa-store"></i>
+            <span>Diageo PS On Trade Program</span>
+          </div>
+          <h1 class="form-title" style="background: linear-gradient(135deg, var(--text-primary) 30%, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Cập Nhật Thông Tin Số Bán PS</h1>
+          <p class="form-subtitle">Cổng thông tin dành cho PS Team cập nhật thông tin số lượng bán của Permanent Signage tại điểm bán.</p>
+        </header>
+
+        <form id="psForm" novalidate>
+          <!-- Date Field (Auto captured, Read-only) -->
+          <div class="form-group" id="group-ps-date">
+            <label class="form-label">Ngày báo cáo (Tự động) <span class="required">*</span></label>
+            <div class="input-wrapper">
+              <i class="fa-regular fa-calendar input-icon"></i>
+              <input type="text" id="psReportDate" class="input-control" readonly style="background: rgba(15, 23, 42, 0.03); color: var(--text-secondary); cursor: not-allowed;">
+            </div>
+          </div>
+
+          <!-- Outlet search input -->
+          <div class="form-group autocomplete-group" id="group-ps-outlet">
+            <label class="form-label">Tên Outlet đăng ký <span class="required">*</span></label>
+            <div class="input-wrapper">
+              <i class="fa-solid fa-location-dot input-icon"></i>
+              <input type="text" id="psOutletInput" class="input-control" placeholder="Gõ hoặc chọn tên Outlet..." autocomplete="off">
+              <div class="autocomplete-list" id="psOutletAutocompleteList"></div>
+            </div>
+            <div class="error-message" id="ps-outlet-error"></div>
+          </div>
+
+          <!-- PS Name dropdown -->
+          <div class="form-group" id="group-ps-name">
+            <label class="form-label">Tên PS <span class="required">*</span></label>
+            <div class="input-wrapper">
+              <i class="fa-solid fa-tag input-icon"></i>
+              <select id="psNameSelect" class="input-control select-control" disabled>
+                <option value="">-- Chọn Tên PS (Vui lòng chọn Outlet trước) --</option>
+              </select>
+            </div>
+            <div class="error-message" id="ps-name-error"></div>
+          </div>
+
+          <!-- Promotion Program -->
+          <div class="form-group" id="group-ps-promo">
+            <label class="form-label">Chương trình khuyến mãi <span class="required">*</span></label>
+            <div class="input-wrapper">
+              <i class="fa-solid fa-gift input-icon"></i>
+              <input type="text" id="psPromoInput" class="input-control" placeholder="Nhập tên chương trình khuyến mãi...">
+            </div>
+            <div class="error-message" id="ps-promo-error"></div>
+          </div>
+
+          <!-- Ratio of tables -->
+          <div class="form-group" id="group-ps-ratio">
+            <label class="form-label">Số bàn uống rượu CTy / Tổng số bàn bán của Outlet <span class="required">*</span></label>
+            <div class="input-wrapper">
+              <i class="fa-solid fa-chart-pie input-icon"></i>
+              <input type="text" id="psRatioInput" class="input-control" placeholder="Nhập định dạng number/number (ví dụ: 12/24)...">
+            </div>
+            <div class="error-message" id="ps-ratio-error"></div>
+          </div>
+
+          <div class="flex-row">
+            <!-- Beer customers -->
+            <div class="form-group half-width" id="group-ps-beer-cust">
+              <label class="form-label">Số lượng khách uống bia <span class="required">*</span></label>
+              <div class="input-wrapper">
+                <i class="fa-solid fa-beer-mug-empty input-icon"></i>
+                <input type="number" id="psBeerCustInput" class="input-control" min="0" placeholder="Số lượng...">
+              </div>
+              <div class="error-message" id="ps-beer-cust-error"></div>
+            </div>
+
+            <!-- Competitor customers -->
+            <div class="form-group half-width" id="group-ps-competitor-cust">
+              <label class="form-label">Khách uống rượu đối thủ <span class="required">*</span></label>
+              <div class="input-wrapper">
+                <i class="fa-solid fa-wine-glass-empty input-icon"></i>
+                <input type="number" id="psCompetitorCustInput" class="input-control" min="0" placeholder="Số lượng...">
+              </div>
+              <div class="error-message" id="ps-competitor-cust-error"></div>
+            </div>
+          </div>
+
+          <!-- Company products sold quantities -->
+          <div class="form-group" id="group-ps-products" style="margin-top: 15px;">
+            <label class="form-label" style="font-weight: 700; color: var(--text-primary);">Số lượng rượu công ty bán <span class="required">*</span></label>
+            
+            <div class="product-search-wrapper" style="margin-bottom: 12px; position: relative;">
+              <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.85rem;"></i>
+              <input type="text" id="psProductSearch" class="input-control" placeholder="Tìm nhanh sản phẩm (ví dụ: JW Blue, Singleton...)..." style="padding-left: 40px; font-size: 0.85rem;">
+            </div>
+
+            <div class="product-brands-accordion" id="psProductGrid" style="max-height: 380px; overflow-y: auto; border: 1px solid var(--border-glass); border-radius: var(--border-radius-md); padding: 15px; background: rgba(255,255,255,0.4);">
+              <!-- Populated dynamically by JS -->
+            </div>
+            <div class="error-message" id="ps-products-error" style="margin-top: 6px;"></div>
+          </div>
+
+          <!-- Submit buttons -->
+          <div style="margin-top: 25px;">
+            <button type="button" class="btn btn-primary" id="btnPsSubmit" style="width: 100%; border-radius: 12px; background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%); box-shadow: 0 4px 12px rgba(168, 85, 247, 0.2);">
+              <span class="btn-text">Gửi báo cáo số bán</span>
+              <i class="fa-solid fa-paper-plane btn-icon-right"></i>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- ==================== PS SUCCESS SUMMARY SCREEN ==================== -->
+      <div class="selection-screen" id="psSuccessScreen" style="display: none; padding: 20px 10px;">
+        <div style="text-align: center; margin-bottom: 25px;">
+          <div class="success-icon-wrapper" style="margin-bottom: 15px;">
+            <div class="success-icon-circle" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); width: 70px; height: 70px; font-size: 2rem;">
+              <i class="fa-solid fa-check"></i>
+            </div>
+          </div>
+          <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--text-primary); margin-bottom: 6px;">Gửi Báo Cáo Thành Công!</h2>
+          <p class="text-secondary" style="font-size: 0.88rem; max-width: 400px; margin: 0 auto;">Dưới đây là tổng hợp thông tin báo cáo đã được lưu trữ trên hệ thống.</p>
+        </div>
+
+        <!-- Screenshot Card Summary -->
+        <div class="ps-summary-card" id="psSummaryScreenshotCard" style="background: #ffffff; border: 1px solid var(--border-glass); border-radius: var(--border-radius-md); padding: 25px 20px; box-shadow: var(--shadow-premium); margin-bottom: 25px;">
+          <div style="text-align: center; border-bottom: 1px dashed var(--border-glass); padding-bottom: 15px; margin-bottom: 15px;">
+            <div style="font-size: 0.72rem; font-weight: 800; color: #a855f7; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Diageo PS On Trade Report</div>
+            <div id="sumPsDate" style="font-size: 0.82rem; font-weight: 700; color: var(--text-primary);">Ngày báo cáo: -</div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div style="display: flex; justify-content: space-between; gap: 10px;">
+              <span style="font-size: 0.82rem; color: var(--text-secondary); font-weight: 500;">Tên Outlet:</span>
+              <span id="sumPsOutlet" style="font-size: 0.82rem; color: var(--text-primary); font-weight: 700; text-align: right;">-</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; gap: 10px;">
+              <span style="font-size: 0.82rem; color: var(--text-secondary); font-weight: 500;">Tên PS:</span>
+              <span id="sumPsName" style="font-size: 0.82rem; color: #a855f7; font-weight: 700; text-align: right;">-</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; gap: 10px;">
+              <span style="font-size: 0.82rem; color: var(--text-secondary); font-weight: 500;">Chương trình KM:</span>
+              <span id="sumPsPromo" style="font-size: 0.82rem; color: var(--text-primary); font-weight: 600; text-align: right;">-</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; gap: 10px;">
+              <span style="font-size: 0.82rem; color: var(--text-secondary); font-weight: 500;">Tỉ lệ bàn uống rượu:</span>
+              <span id="sumPsRatio" style="font-size: 0.82rem; color: var(--text-primary); font-weight: 700; text-align: right;">-</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; gap: 10px;">
+              <span style="font-size: 0.82rem; color: var(--text-secondary); font-weight: 500;">Khách uống bia:</span>
+              <span id="sumPsBeerCust" style="font-size: 0.82rem; color: var(--text-primary); font-weight: 600; text-align: right;">-</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; gap: 10px;">
+              <span style="font-size: 0.82rem; color: var(--text-secondary); font-weight: 500;">Khách rượu đối thủ:</span>
+              <span id="sumPsCompetitorCust" style="font-size: 0.82rem; color: var(--text-primary); font-weight: 600; text-align: right;">-</span>
+            </div>
+          </div>
+
+          <!-- Product Sales Recap -->
+          <div style="margin-top: 20px; border-top: 1px dashed var(--border-glass); padding-top: 15px;">
+            <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-primary); margin-bottom: 10px;"><i class="fa-solid fa-bottle-water" style="color: #a855f7; margin-right: 6px;"></i> Số lượng rượu công ty bán:</div>
+            <div id="sumPsProductsList" style="display: flex; flex-direction: column; gap: 8px;">
+              <!-- Dynamic product quantities -->
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <div style="font-size: 0.78rem; color: var(--text-muted); text-align: center; margin-bottom: 5px;"><i class="fa-solid fa-circle-info"></i> Hãy chụp ảnh màn hình bảng tổng hợp trên để báo cáo lên nhóm chat.</div>
+          <button type="button" class="btn btn-primary" id="btnPsNewReport" style="width: 100%; border-radius: 12px; background: var(--primary-gradient);">
+            <i class="fa-solid fa-rotate-right"></i> Tạo báo cáo mới
+          </button>
+          <button type="button" class="btn btn-secondary" id="btnPsSuccessBackToSelection" style="width: 100%; border-radius: 12px;">
+            <i class="fa-solid fa-chevron-left"></i> Quay lại trang chủ chọn cổng
+          </button>
+        </div>
       </div>
 
       <div id="salesFormContainer">
+        <!-- Back to Selection Screen Button -->
+        <div class="back-to-landing-wrapper">
+          <button type="button" class="btn-back-landing" id="btnBackToLanding">
+            <i class="fa-solid fa-arrow-left"></i> Quay lại trang chọn
+          </button>
+        </div>
+
         <!-- Premium Header Section -->
         <header class="form-header">
         <div class="brand-badge">
@@ -513,6 +692,9 @@
           <button type="button" class="admin-tab" data-tab="programs">
             <i class="fa-solid fa-sliders"></i> Tên Outlet
           </button>
+          <button type="button" class="admin-tab" data-tab="products">
+            <i class="fa-solid fa-bottle-water"></i> Danh mục Sản phẩm
+          </button>
         </nav>
 
         <!-- Tab 1 Content: Submissions -->
@@ -527,6 +709,12 @@
             <button type="button" class="btn-export btn-export-clear" id="btnClearAllReports">
               <i class="fa-solid fa-trash-can"></i> Xóa tất cả báo cáo
             </button>
+          </div>
+
+          <div class="report-filter-bar" style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
+            <button type="button" class="btn-filter active" data-filter="all" style="padding: 6px 12px; font-size: 0.78rem; border-radius: 6px; border: 1px solid var(--border-glass); background: #ffffff; cursor: pointer; font-weight: 600; transition: var(--transition-fast);">Tất cả</button>
+            <button type="button" class="btn-filter" data-filter="Event" style="padding: 6px 12px; font-size: 0.78rem; border-radius: 6px; border: 1px solid var(--border-glass); background: #ffffff; cursor: pointer; font-weight: 600; transition: var(--transition-fast);">Event Activation</button>
+            <button type="button" class="btn-filter" data-filter="PS" style="padding: 6px 12px; font-size: 0.78rem; border-radius: 6px; border: 1px solid var(--border-glass); background: #ffffff; cursor: pointer; font-weight: 600; transition: var(--transition-fast);">PS On Trade</button>
           </div>
           
           <div class="report-table-wrapper">
@@ -551,14 +739,37 @@
 
         <!-- Tab 2 Content: Program names CRUD -->
         <div class="admin-tab-content" id="tab-programs">
-          <div class="program-crud-bar">
+          <div class="program-crud-bar" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; background: rgba(15, 23, 42, 0.02); padding: 12px; border-radius: 8px; border: 1px solid var(--border-glass);">
             <input type="text" id="newProgramName" class="input-control" placeholder="Tên Outlet mới...">
-            <button type="button" class="btn-crud-add" id="btnAddProgram">
-              <i class="fa-solid fa-plus"></i> Thêm mới
+            <input type="text" id="newProgramPsNames" class="input-control" placeholder="Danh sách Tên PS (dấu phẩy phân tách, ví dụ: PS 1, PS 2)...">
+            <button type="button" class="btn-crud-add" id="btnAddProgram" style="align-self: flex-end; padding: 8px 16px;">
+              <i class="fa-solid fa-plus"></i> Thêm Outlet
             </button>
           </div>
           
           <div class="program-crud-list" id="programCrudList">
+            <!-- Injected via JS -->
+          </div>
+        </div>
+
+        <!-- Tab 3 Content: Products catalog CRUD -->
+        <div class="admin-tab-content" id="tab-products">
+          <div class="product-crud-bar" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; background: rgba(15, 23, 42, 0.02); padding: 12px; border-radius: 8px; border: 1px solid var(--border-glass);">
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <input type="text" id="newProductBrand" class="input-control" placeholder="Brand mới (ví dụ: Johnnie Walker)..." style="flex: 1; min-width: 150px;">
+              <input type="text" id="newProductSku" class="input-control" placeholder="Tên SKU sản phẩm (ví dụ: Black Label 75cl)..." style="flex: 2; min-width: 200px;">
+            </div>
+            <button type="button" class="btn-crud-add" id="btnAddProduct" style="align-self: flex-end; padding: 8px 16px; background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);">
+              <i class="fa-solid fa-plus"></i> Thêm sản phẩm
+            </button>
+          </div>
+
+          <div style="margin-bottom: 12px; position: relative;">
+            <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.85rem;"></i>
+            <input type="text" id="adminProductSearch" class="input-control" placeholder="Tìm kiếm nhanh trong danh mục..." style="padding-left: 40px; font-size: 0.85rem;">
+          </div>
+          
+          <div class="product-crud-list" id="productCrudList" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border-glass); border-radius: var(--border-radius-md); background: #ffffff;">
             <!-- Injected via JS -->
           </div>
         </div>
@@ -604,15 +815,65 @@
 
   <!-- Edit Program Name Modal -->
   <div class="edit-program-modal" id="editProgramModal">
-    <div class="edit-program-card">
-      <h4 class="edit-program-title">Chỉnh sửa tên Outlet</h4>
-      <div class="form-group" id="group-edit-program-input" style="margin-bottom: 0;">
+    <div class="edit-program-card" style="width: 90%; max-width: 450px; display: flex; flex-direction: column; gap: 15px;">
+      <h4 class="edit-program-title" style="margin-bottom: 0;">Chỉnh sửa Outlet</h4>
+      <div class="form-group" id="group-edit-program-input" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 0;">
+        <label class="form-label" style="font-size: 0.8rem; margin-bottom: 0;">Tên Outlet</label>
         <input type="text" id="editProgramNameInput" class="input-control" placeholder="Tên Outlet...">
+        <label class="form-label" style="font-size: 0.8rem; margin-bottom: 0;">Danh sách Tên PS (dấu phẩy phân tách)</label>
+        <input type="text" id="editProgramPsNamesInput" class="input-control" placeholder="Ví dụ: PS 1, PS 2...">
         <input type="hidden" id="editProgramIndex">
       </div>
-      <div class="edit-program-actions">
+      <div class="edit-program-actions" style="margin-top: 5px;">
         <button type="button" class="btn btn-secondary" id="btnCancelEditProgram" style="padding: 8px 14px; font-size: 0.78rem;">Hủy</button>
         <button type="button" class="btn btn-primary" id="btnSaveEditProgram" style="padding: 8px 14px; font-size: 0.78rem;">Lưu lại</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Product Modal -->
+  <div class="edit-program-modal" id="editProductModal" style="display: none;">
+    <div class="edit-program-card" style="width: 90%; max-width: 450px; display: flex; flex-direction: column; gap: 15px;">
+      <h4 class="edit-program-title" style="margin-bottom: 0;">Chỉnh sửa Sản phẩm</h4>
+      <div class="form-group" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 0;">
+        <label class="form-label" style="font-size: 0.8rem; margin-bottom: 0;">Nhóm Brand</label>
+        <input type="text" id="editProductBrandInput" class="input-control" placeholder="Brand...">
+        <label class="form-label" style="font-size: 0.8rem; margin-bottom: 0;">Tên sản phẩm (SKU)</label>
+        <input type="text" id="editProductSkuInput" class="input-control" placeholder="SKU...">
+        <input type="hidden" id="editProductIndex">
+      </div>
+      <div class="edit-program-actions" style="margin-top: 5px;">
+        <button type="button" class="btn btn-secondary" id="btnCancelEditProduct" style="padding: 8px 14px; font-size: 0.78rem;">Hủy</button>
+        <button type="button" class="btn btn-primary" id="btnSaveEditProduct" style="padding: 8px 14px; font-size: 0.78rem;">Lưu lại</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Report Detail View Modal -->
+  <div class="edit-program-modal" id="reportDetailModal" style="display: none;">
+    <div class="edit-program-card" style="width: 95%; max-width: 550px; max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; padding: 25px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-glass); padding-bottom: 12px;">
+        <h4 style="font-size: 1.2rem; font-weight: 800; color: var(--text-primary); margin: 0;">Chi Tiết Báo Cáo</h4>
+        <span id="detailActivityBadge" style="font-size: 0.72rem; font-weight: 700; padding: 4px 8px; border-radius: 6px;">-</span>
+      </div>
+
+      <!-- Report Date Edit (Admin only) -->
+      <div class="form-group" style="margin-bottom: 0;">
+        <label class="form-label" style="font-size: 0.82rem; font-weight: 700; margin-bottom: 6px;">Ngày Báo Cáo (Chỉ Admin sửa)</label>
+        <div class="input-wrapper">
+          <i class="fa-regular fa-calendar input-icon"></i>
+          <input type="date" id="detailReportDateInput" class="input-control" style="font-size: 0.9rem;">
+        </div>
+      </div>
+
+      <!-- Form details injected dynamically by JS -->
+      <div id="reportDetailBody" style="display: flex; flex-direction: column; gap: 15px;">
+        <!-- Injected via JS -->
+      </div>
+
+      <div class="edit-program-actions" style="margin-top: 10px; border-top: 1px solid var(--border-glass); padding-top: 15px; display: flex; justify-content: flex-end; gap: 10px;">
+        <button type="button" class="btn btn-secondary" id="btnCancelReportDetail" style="padding: 8px 16px;">Đóng</button>
+        <button type="button" class="btn btn-primary" id="btnSaveReportDetail" style="padding: 8px 16px; background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);">Lưu thay đổi</button>
       </div>
     </div>
   </div>

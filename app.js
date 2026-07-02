@@ -76,25 +76,107 @@ document.addEventListener('DOMContentLoaded', () => {
   let activeItemIndex = -1;
 
   let samplePrograms = [];
+  let allProducts = [];
 
   function initPrograms() {
     if (useFirebase) {
       db.collection('programs').orderBy('name').onSnapshot((snapshot) => {
         samplePrograms = [];
         snapshot.forEach((doc) => {
-          samplePrograms.push(doc.data().name);
+          const data = doc.data();
+          samplePrograms.push({
+            id: doc.id,
+            name: data.name,
+            psNames: data.psNames || []
+          });
         });
         renderProgramCrudList();
+        if (typeof renderAutocomplete === 'function') renderAutocomplete();
       });
     } else {
       const stored = localStorage.getItem('diageo_programs');
       if (stored) {
-        samplePrograms = JSON.parse(stored);
+        try {
+          let parsed = JSON.parse(stored);
+          samplePrograms = parsed.map(item => {
+            if (typeof item === 'string') {
+              return { name: item, psNames: [] };
+            }
+            return { id: item.id || '', name: item.name, psNames: item.psNames || [] };
+          });
+        } catch (e) {
+          console.error("Error parsing programs:", e);
+          samplePrograms = [];
+        }
       } else {
         samplePrograms = [];
         localStorage.setItem('diageo_programs', JSON.stringify(samplePrograms));
       }
     }
+  }
+
+  function initProducts() {
+    if (useFirebase) {
+      db.collection('products').orderBy('brand').orderBy('sku').onSnapshot((snapshot) => {
+        allProducts = [];
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          allProducts.push({
+            id: doc.id,
+            brand: data.brand,
+            sku: data.sku
+          });
+        });
+        
+        if (allProducts.length === 0) {
+          seedProducts();
+        } else {
+          if (typeof renderProductsCrudList === 'function') renderProductsCrudList();
+          if (typeof renderPsProductGrid === 'function') renderPsProductGrid();
+        }
+      }, (error) => {
+        console.error("Firestore products sync error:", error);
+      });
+    } else {
+      const stored = localStorage.getItem('diageo_products');
+      if (stored) {
+        allProducts = JSON.parse(stored);
+        if (allProducts.length === 0) {
+          seedProducts();
+        } else {
+          if (typeof renderProductsCrudList === 'function') renderProductsCrudList();
+          if (typeof renderPsProductGrid === 'function') renderPsProductGrid();
+        }
+      } else {
+        seedProducts();
+      }
+    }
+  }
+
+  function seedProducts() {
+    fetch('products.json')
+      .then(r => r.json())
+      .then(data => {
+        if (useFirebase) {
+          const batch = db.batch();
+          data.forEach(prod => {
+            const docRef = db.collection('products').doc();
+            batch.set(docRef, prod);
+          });
+          batch.commit().then(() => {
+            console.log("Diageo products seeded successfully in Firestore.");
+          }).catch(err => console.error("Error seeding products to Firestore:", err));
+        } else {
+          allProducts = data;
+          localStorage.setItem('diageo_products', JSON.stringify(allProducts));
+          if (typeof renderProductsCrudList === 'function') renderProductsCrudList();
+          if (typeof renderPsProductGrid === 'function') renderPsProductGrid();
+          console.log("Diageo products seeded successfully in LocalStorage.");
+        }
+      })
+      .catch(err => {
+        console.error("Error loading products.json to seed:", err);
+      });
   }
 
   let reports = [];
@@ -133,23 +215,23 @@ document.addEventListener('DOMContentLoaded', () => {
     activeItemIndex = -1;
 
     const filtered = samplePrograms.filter(prog => 
-      prog.toLowerCase().includes(filterText.toLowerCase())
+      prog.name.toLowerCase().includes(filterText.toLowerCase())
     );
 
     if (filtered.length === 0) {
       const emptyDiv = document.createElement('div');
       emptyDiv.className = 'autocomplete-no-results';
-      emptyDiv.textContent = 'Không tìm thấy chương trình nào...';
+      emptyDiv.textContent = 'Không tìm thấy Outlet nào...';
       autocompleteList.appendChild(emptyDiv);
     } else {
       filtered.forEach((prog, index) => {
         const item = document.createElement('div');
         item.className = 'autocomplete-item';
-        item.textContent = prog;
+        item.textContent = prog.name;
         item.dataset.index = index;
 
         item.addEventListener('click', () => {
-          selectProgram(prog);
+          selectProgram(prog.name);
         });
 
         autocompleteList.appendChild(item);
@@ -990,6 +1072,7 @@ document.addEventListener('DOMContentLoaded', () => {
             eventContent: contentVal,
             guarantee: guaranteeVal,
             images: finalImages, // array of base64s OR storage URLs
+            reportDate: new Date().toISOString().split('T')[0],
             timestamp: new Date().toISOString()
           };
 
@@ -1132,6 +1215,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const cardPSOnTrade = document.getElementById('cardPSOnTrade');
   const btnSelectionAdminTrigger = document.getElementById('btnSelectionAdminTrigger');
   const btnBackToSelection = document.getElementById('btnBackToSelection');
+  const btnBackToLanding = document.getElementById('btnBackToLanding');
   
   const adminTabs = document.querySelectorAll('.admin-tab');
   const adminTabContents = document.querySelectorAll('.admin-tab-content');
@@ -1139,13 +1223,39 @@ document.addEventListener('DOMContentLoaded', () => {
   const reportTableBody = document.getElementById('reportTableBody');
   const programCrudList = document.getElementById('programCrudList');
   const newProgramNameInput = document.getElementById('newProgramName');
+  const newProgramPsNamesInput = document.getElementById('newProgramPsNames');
   const btnAddProgram = document.getElementById('btnAddProgram');
   
   const editProgramModal = document.getElementById('editProgramModal');
   const editProgramNameInput = document.getElementById('editProgramNameInput');
+  const editProgramPsNamesInput = document.getElementById('editProgramPsNamesInput');
   const editProgramIndex = document.getElementById('editProgramIndex');
   const btnCancelEditProgram = document.getElementById('btnCancelEditProgram');
   const btnSaveEditProgram = document.getElementById('btnSaveEditProgram');
+
+  // Product CRUD selectors
+  const newProductBrandInput = document.getElementById('newProductBrand');
+  const newProductSkuInput = document.getElementById('newProductSku');
+  const btnAddProduct = document.getElementById('btnAddProduct');
+  const adminProductSearch = document.getElementById('adminProductSearch');
+  const productCrudList = document.getElementById('productCrudList');
+
+  const editProductModal = document.getElementById('editProductModal');
+  const editProductBrandInput = document.getElementById('editProductBrandInput');
+  const editProductSkuInput = document.getElementById('editProductSkuInput');
+  const editProductIndex = document.getElementById('editProductIndex');
+  const btnCancelEditProduct = document.getElementById('btnCancelEditProduct');
+  const btnSaveEditProduct = document.getElementById('btnSaveEditProduct');
+
+  // Detail View selectors
+  const reportDetailModal = document.getElementById('reportDetailModal');
+  const detailActivityBadge = document.getElementById('detailActivityBadge');
+  const detailReportDateInput = document.getElementById('detailReportDateInput');
+  const reportDetailBody = document.getElementById('reportDetailBody');
+  const btnCancelReportDetail = document.getElementById('btnCancelReportDetail');
+  const btnSaveReportDetail = document.getElementById('btnSaveReportDetail');
+  
+  let reportFilterType = 'all'; // Filter state for reports list
   
   const lightboxOverlay = document.getElementById('lightboxOverlay');
   const lightboxImg = document.getElementById('lightboxImg');
@@ -1179,6 +1289,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (btnBackToSelection) {
     btnBackToSelection.addEventListener('click', () => {
+      window.history.pushState({}, '', '/');
+      handleRouting();
+    });
+  }
+
+  if (btnBackToLanding) {
+    btnBackToLanding.addEventListener('click', () => {
       window.history.pushState({}, '', '/');
       handleRouting();
     });
@@ -1274,6 +1391,22 @@ document.addEventListener('DOMContentLoaded', () => {
           content.classList.add('active');
         }
       });
+
+      if (targetTab === 'products') {
+        renderProductsCrudList();
+      } else if (targetTab === 'programs') {
+        renderProgramCrudList();
+      }
+    });
+  });
+
+  // Report filter bar buttons listeners
+  document.querySelectorAll('.btn-filter').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      reportFilterType = btn.dataset.filter;
+      renderReportsTable();
     });
   });
 
@@ -1283,11 +1416,18 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderReportsTable() {
     reportTableBody.innerHTML = '';
     
-    if (reports.length === 0) {
+    let filteredReports = [...reports];
+    if (reportFilterType === 'Event') {
+      filteredReports = filteredReports.filter(r => r.activityType !== 'PS');
+    } else if (reportFilterType === 'PS') {
+      filteredReports = filteredReports.filter(r => r.activityType === 'PS');
+    }
+
+    if (filteredReports.length === 0) {
       reportTableBody.innerHTML = `
         <tr>
           <td colspan="7">
-            <div class="no-data-msg">Chưa có báo cáo nào được gửi lên hệ thống.</div>
+            <div class="no-data-msg">Không có báo cáo nào khớp với bộ lọc.</div>
           </td>
         </tr>
       `;
@@ -1295,7 +1435,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Sort reports by newest first
-    const sortedReports = [...reports].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    const sortedReports = filteredReports.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
     sortedReports.forEach(report => {
       const tr = document.createElement('tr');
@@ -1306,11 +1446,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Program cell
       const tdProgram = document.createElement('td');
-      tdProgram.innerHTML = `<div class="event-name-td" style="font-weight: 500;">${report.programName || '-'}</div>`;
+      if (report.activityType === 'PS') {
+        tdProgram.innerHTML = `<div class="event-name-td" style="font-weight: 500;">KM: ${report.promoName || '-'}</div>`;
+      } else {
+        tdProgram.innerHTML = `<div class="event-name-td" style="font-weight: 500;">${report.programName || '-'}</div>`;
+      }
       
       // Dates cell
       const tdTime = document.createElement('td');
-      if (report.activityType === 'Display' || (!report.startDate && !report.endDate)) {
+      if (report.activityType === 'PS') {
+        tdTime.innerHTML = `<div class="date-td">${formatDate(report.reportDate)}</div>`;
+      } else if (report.activityType === 'Display' || (!report.startDate && !report.endDate)) {
         tdTime.innerHTML = `<div class="date-td text-muted" style="font-style: italic;">Không áp dụng<br>(Trưng bày)</div>`;
       } else {
         tdTime.innerHTML = `
@@ -1323,40 +1469,65 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Categories cell
       const tdTypes = document.createElement('td');
-      const typesHtml = report.eventTypes.map(t => `<span>${t}</span>`).join('');
-      tdTypes.innerHTML = `<div class="types-td">${typesHtml}</div>`;
+      if (report.activityType === 'PS') {
+        tdTypes.innerHTML = `<div class="types-td"><span style="background: rgba(168, 85, 247, 0.1); color: #a855f7; font-weight: 600; font-size: 0.72rem; padding: 2px 6px; border-radius: 4px;">PS On Trade</span></div>`;
+      } else {
+        const typesHtml = report.eventTypes.map(t => `<span>${t}</span>`).join('');
+        tdTypes.innerHTML = `<div class="types-td">${typesHtml}</div>`;
+      }
       
       // Summary Content cell
       const tdContent = document.createElement('td');
-      tdContent.textContent = report.eventContent || '(Không có tóm tắt)';
+      if (report.activityType === 'PS') {
+        tdContent.textContent = `PS: ${report.psName}. Tỉ lệ: ${report.tableRatio}. Khách Bia: ${report.beerCustCount}. Khách ĐT: ${report.competitorCustCount}.`;
+      } else {
+        tdContent.textContent = report.eventContent || '(Không có tóm tắt)';
+      }
       
       // Thumbnails cell
       const tdGallery = document.createElement('td');
       const thumbList = document.createElement('div');
       thumbList.className = 'thumbnail-list';
       
-      if (report.images && report.images.length > 0) {
-        report.images.forEach(imgBase64 => {
-          const img = document.createElement('img');
-          img.className = 'table-thumbnail';
-          img.src = imgBase64;
-          img.alt = 'Proof';
-          
-          img.addEventListener('click', () => {
-            lightboxImg.src = imgBase64;
-            lightboxOverlay.classList.add('active');
-          });
-          
-          thumbList.appendChild(img);
-        });
+      if (report.activityType === 'PS') {
+        thumbList.innerHTML = `<button type="button" class="btn btn-secondary btn-detail-view" style="padding: 4px 8px; font-size: 0.72rem; border-radius: 4px;" data-id="${report.id}"><i class="fa-solid fa-eye"></i> Chi tiết</button>`;
       } else {
-        thumbList.textContent = '(Không có ảnh)';
+        if (report.images && report.images.length > 0) {
+          report.images.forEach(imgBase64 => {
+            const img = document.createElement('img');
+            img.className = 'table-thumbnail';
+            img.src = imgBase64;
+            img.alt = 'Proof';
+            
+            img.addEventListener('click', () => {
+              lightboxImg.src = imgBase64;
+              lightboxOverlay.classList.add('active');
+            });
+            
+            thumbList.appendChild(img);
+          });
+        } else {
+          thumbList.textContent = '(Không có ảnh)';
+        }
+        
+        // Add detail button too
+        const btnDetail = document.createElement('button');
+        btnDetail.type = 'button';
+        btnDetail.className = 'btn btn-secondary btn-detail-view';
+        btnDetail.style.cssText = 'padding: 4px 8px; font-size: 0.72rem; border-radius: 4px; display: block; margin-top: 6px;';
+        btnDetail.innerHTML = '<i class="fa-solid fa-eye"></i> Chi tiết';
+        btnDetail.dataset.id = report.id;
+        thumbList.appendChild(btnDetail);
       }
       tdGallery.appendChild(thumbList);
       
       // Guarantee cell
       const tdGuarantee = document.createElement('td');
-      tdGuarantee.textContent = report.guarantee;
+      if (report.activityType === 'PS') {
+        tdGuarantee.textContent = 'Tự động';
+      } else {
+        tdGuarantee.textContent = report.guarantee;
+      }
       
       tr.appendChild(tdOutlet);
       tr.appendChild(tdProgram);
@@ -1367,6 +1538,14 @@ document.addEventListener('DOMContentLoaded', () => {
       tr.appendChild(tdGuarantee);
       
       reportTableBody.appendChild(tr);
+    });
+
+    // Bind detail view click listeners
+    reportTableBody.querySelectorAll('.btn-detail-view').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        showReportDetail(id);
+      });
     });
   }
 
@@ -1382,6 +1561,370 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ----------------------------------------------------
+  // Report Detail Modal View & Edit Logic
+  // ----------------------------------------------------
+  let currentDetailReportId = null;
+
+  function showReportDetail(reportId) {
+    const report = reports.find(r => r.id === reportId);
+    if (!report) return;
+
+    currentDetailReportId = reportId;
+    reportDetailModal.style.display = 'flex';
+
+    if (detailReportDateInput) {
+      detailReportDateInput.value = report.reportDate || (report.timestamp ? report.timestamp.split('T')[0] : '');
+    }
+
+    if (detailActivityBadge) {
+      if (report.activityType === 'PS') {
+        detailActivityBadge.textContent = 'PS On Trade';
+        detailActivityBadge.style.cssText = 'background: rgba(168, 85, 247, 0.1); color: #a855f7;';
+      } else {
+        detailActivityBadge.textContent = report.activityType || 'Event';
+        detailActivityBadge.style.cssText = 'background: rgba(79, 70, 229, 0.1); color: var(--primary-color);';
+      }
+    }
+
+    if (reportDetailBody) {
+      reportDetailBody.innerHTML = '';
+
+      if (report.activityType === 'PS') {
+        let prodSalesHtml = '';
+        if (report.companyProductSales) {
+          Object.keys(report.companyProductSales).forEach(sku => {
+            prodSalesHtml += `
+              <div style="display: flex; justify-content: space-between; font-size: 0.82rem; border-bottom: 1px dotted var(--border-glass); padding-bottom: 4px;">
+                <span style="color: var(--text-secondary);">${sku}</span>
+                <span style="font-weight: 700; color: var(--text-primary);">${report.companyProductSales[sku]} chai</span>
+              </div>
+            `;
+          });
+        }
+        if (!prodSalesHtml) {
+          prodSalesHtml = '<div style="font-size: 0.82rem; color: var(--text-muted); font-style: italic;">Không có số bán rượu.</div>';
+        }
+
+        reportDetailBody.innerHTML = `
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; background: rgba(15, 23, 42, 0.01); padding: 15px; border-radius: 8px; border: 1px solid var(--border-glass);">
+            <div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Tên Outlet</div>
+              <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-primary);">${report.outletName}</div>
+            </div>
+            <div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Tên PS</div>
+              <div style="font-size: 0.88rem; font-weight: 700; color: #a855f7;">${report.psName}</div>
+            </div>
+            <div style="grid-column: span 2;">
+              <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Chương trình khuyến mãi</div>
+              <div style="font-size: 0.88rem; font-weight: 600; color: var(--text-primary);">${report.promoName}</div>
+            </div>
+            <div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Tỉ lệ bàn uống rượu</div>
+              <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-primary);">${report.tableRatio}</div>
+            </div>
+            <div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Khách uống bia</div>
+              <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-primary);">${report.beerCustCount} khách</div>
+            </div>
+            <div style="grid-column: span 2;">
+              <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Khách uống rượu đối thủ</div>
+              <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-primary);">${report.competitorCustCount} khách</div>
+            </div>
+          </div>
+
+          <div style="margin-top: 10px;">
+            <div style="font-size: 0.8rem; font-weight: 800; color: var(--text-primary); margin-bottom: 8px;"><i class="fa-solid fa-bottle-water" style="color: #a855f7; margin-right: 6px;"></i> Số lượng rượu bán ra:</div>
+            <div style="display: flex; flex-direction: column; gap: 8px; background: #ffffff; padding: 12px; border-radius: 8px; border: 1px solid var(--border-glass);">
+              ${prodSalesHtml}
+            </div>
+          </div>
+        `;
+      } else {
+        let typesBadge = '';
+        if (report.eventTypes) {
+          typesBadge = report.eventTypes.map(t => `<span style="font-size: 0.72rem; background: rgba(79, 70, 229, 0.06); color: var(--primary-color); padding: 2px 6px; border-radius: 4px; font-weight: 600; margin-right: 4px;">${t}</span>`).join('');
+        }
+
+        let imagesHtml = '';
+        if (report.images && report.images.length > 0) {
+          report.images.forEach(img => {
+            imagesHtml += `<img src="${img}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-glass); cursor: pointer;" onclick="window.open('${img}')">`;
+          });
+        } else {
+          imagesHtml = '<span style="font-size: 0.82rem; color: var(--text-muted); font-style: italic;">Không có hình ảnh.</span>';
+        }
+
+        reportDetailBody.innerHTML = `
+          <div style="display: grid; grid-template-columns: 1fr; gap: 15px; background: rgba(15, 23, 42, 0.01); padding: 15px; border-radius: 8px; border: 1px solid var(--border-glass);">
+            <div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Tên Outlet / Event</div>
+              <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-primary);">${report.outletName || report.eventName}</div>
+            </div>
+            <div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Tên chương trình</div>
+              <div style="font-size: 0.88rem; font-weight: 600; color: var(--text-primary);">${report.programName || '-'}</div>
+            </div>
+            <div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Loại hình hoạt động</div>
+              <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">${typesBadge}</div>
+            </div>
+            <div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Nội dung hoạt động</div>
+              <div style="font-size: 0.85rem; color: var(--text-secondary); white-space: pre-line; margin-top: 4px;">${report.eventContent || '(Không có nội dung)'}</div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div>
+                <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Ngày bắt đầu</div>
+                <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-primary);">${report.startDate || 'Không áp dụng'}</div>
+              </div>
+              <div>
+                <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Ngày kết thúc</div>
+                <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-primary);">${report.endDate || 'Không áp dụng'}</div>
+              </div>
+            </div>
+            <div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Cam đoan trung thực</div>
+              <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-primary);">${report.guarantee || 'Chưa cam đoan'}</div>
+            </div>
+          </div>
+
+          <div style="margin-top: 10px;">
+            <div style="font-size: 0.8rem; font-weight: 800; color: var(--text-primary); margin-bottom: 8px;"><i class="fa-regular fa-image" style="color: var(--primary-color); margin-right: 6px;"></i> Hình ảnh minh chứng:</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; background: #ffffff; padding: 12px; border-radius: 8px; border: 1px solid var(--border-glass);">
+              ${imagesHtml}
+            </div>
+          </div>
+        `;
+      }
+    }
+  }
+
+  if (btnCancelReportDetail) {
+    btnCancelReportDetail.addEventListener('click', () => {
+      reportDetailModal.style.display = 'none';
+      currentDetailReportId = null;
+    });
+  }
+
+  if (btnSaveReportDetail) {
+    btnSaveReportDetail.addEventListener('click', () => {
+      if (!currentDetailReportId) return;
+      const report = reports.find(r => r.id === currentDetailReportId);
+      if (!report) return;
+
+      const newDateVal = detailReportDateInput.value;
+      if (!newDateVal) {
+        showToast('Trống ngày', 'Vui lòng chọn ngày báo cáo.', 'warning');
+        return;
+      }
+
+      if (useFirebase) {
+        db.collection('reports').doc(currentDetailReportId).update({
+          reportDate: newDateVal
+        }).then(() => {
+          reportDetailModal.style.display = 'none';
+          showToast('Đã lưu', 'Cập nhật ngày báo cáo thành công.', 'success');
+        }).catch(err => {
+          console.error("Firestore report update error:", err);
+          showToast('Lỗi', 'Không thể cập nhật ngày báo cáo.', 'error');
+        });
+      } else {
+        report.reportDate = newDateVal;
+        localStorage.setItem('diageo_reports', JSON.stringify(reports));
+        reportDetailModal.style.display = 'none';
+        renderReportsTable();
+        showToast('Đã lưu', 'Cập nhật ngày báo cáo thành công.', 'success');
+      }
+    });
+  }
+
+  // ----------------------------------------------------
+  // Products CRUD Logic
+  // ----------------------------------------------------
+  function renderProductsCrudList() {
+    if (!productCrudList) return;
+    productCrudList.innerHTML = '';
+
+    const filterVal = adminProductSearch ? adminProductSearch.value.trim().toLowerCase() : '';
+    
+    const grouped = {};
+    allProducts.forEach(prod => {
+      if (!grouped[prod.brand]) {
+        grouped[prod.brand] = [];
+      }
+      grouped[prod.brand].push(prod);
+    });
+
+    let hasProducts = false;
+
+    Object.keys(grouped).sort().forEach(brand => {
+      const prods = grouped[brand].sort((a,b) => a.sku.localeCompare(b.sku));
+      const filtered = prods.filter(p => 
+        p.sku.toLowerCase().includes(filterVal) || p.brand.toLowerCase().includes(filterVal)
+      );
+
+      if (filtered.length === 0) return;
+      hasProducts = true;
+
+      const brandHeader = document.createElement('div');
+      brandHeader.style.cssText = 'background: #f1f5f9; padding: 8px 12px; font-weight: 700; font-size: 0.8rem; color: var(--text-secondary); border-bottom: 1px solid var(--border-glass);';
+      brandHeader.textContent = brand;
+      productCrudList.appendChild(brandHeader);
+
+      filtered.forEach((prod, index) => {
+        const item = document.createElement('div');
+        item.className = 'program-crud-item';
+        item.style.cssText = 'padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-glass);';
+        
+        item.innerHTML = `
+          <span style="font-size: 0.82rem; font-weight: 500; color: var(--text-primary);">${prod.sku}</span>
+          <div class="program-crud-actions">
+            <button type="button" class="btn-crud-action btn-product-edit" data-id="${prod.id}" title="Sửa sản phẩm">
+              <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+            <button type="button" class="btn-crud-action btn-product-delete" data-id="${prod.id}" title="Xóa">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        `;
+
+        const overallIdx = allProducts.findIndex(p => p.id === prod.id);
+
+        item.querySelector('.btn-product-edit').addEventListener('click', () => {
+          editProductBrandInput.value = prod.brand;
+          editProductSkuInput.value = prod.sku;
+          editProductIndex.value = overallIdx;
+          editProductModal.style.display = 'flex';
+          editProductBrandInput.focus();
+        });
+
+        item.querySelector('.btn-product-delete').addEventListener('click', () => {
+          if (confirm(`Bạn chắc chắn muốn xóa sản phẩm rượu: "${prod.sku}"?`)) {
+            if (useFirebase) {
+              db.collection('products').doc(prod.id).delete().then(() => {
+                showToast('Đã xóa', 'Xóa sản phẩm thành công.', 'success');
+              }).catch(err => {
+                console.error("Firestore product delete error:", err);
+                showToast('Lỗi', 'Không thể xóa sản phẩm.', 'error');
+              });
+            } else {
+              allProducts.splice(overallIdx, 1);
+              localStorage.setItem('diageo_products', JSON.stringify(allProducts));
+              renderProductsCrudList();
+              renderPsProductGrid();
+              showToast('Đã xóa', 'Xóa sản phẩm thành công.', 'success');
+            }
+          }
+        });
+
+        productCrudList.appendChild(item);
+      });
+    });
+
+    if (!hasProducts) {
+      const empty = document.createElement('div');
+      empty.style.cssText = 'padding: 15px; text-align: center; color: var(--text-muted); font-size: 0.85rem;';
+      empty.textContent = filterVal ? 'Không tìm thấy sản phẩm nào khớp.' : 'Chưa có sản phẩm nào.';
+      productCrudList.appendChild(empty);
+    }
+  }
+
+  if (btnAddProduct) {
+    btnAddProduct.addEventListener('click', () => {
+      const brand = newProductBrandInput.value.trim();
+      const sku = newProductSkuInput.value.trim();
+
+      if (!brand || !sku) {
+        showToast('Thông tin trống', 'Vui lòng nhập cả Brand và Tên sản phẩm SKU.', 'warning');
+        return;
+      }
+
+      const duplicate = allProducts.some(p => p.sku.toLowerCase() === sku.toLowerCase());
+      if (duplicate) {
+        showToast('Trùng lặp', 'Sản phẩm này đã tồn tại.', 'warning');
+        return;
+      }
+
+      const prodId = `prod_${Date.now()}`;
+      const newProduct = { brand, sku };
+
+      if (useFirebase) {
+        db.collection('products').doc(prodId).set(newProduct).then(() => {
+          newProductBrandInput.value = '';
+          newProductSkuInput.value = '';
+          showToast('Đã thêm', 'Thêm sản phẩm thành công.', 'success');
+        }).catch(err => {
+          console.error("Firestore product add error:", err);
+          showToast('Lỗi', 'Không thể thêm sản phẩm.', 'error');
+        });
+      } else {
+        newProduct.id = prodId;
+        allProducts.push(newProduct);
+        localStorage.setItem('diageo_products', JSON.stringify(allProducts));
+        newProductBrandInput.value = '';
+        newProductSkuInput.value = '';
+        renderProductsCrudList();
+        renderPsProductGrid();
+        showToast('Đã thêm', 'Thêm sản phẩm thành công.', 'success');
+      }
+    });
+  }
+
+  if (btnCancelEditProduct) {
+    btnCancelEditProduct.addEventListener('click', () => {
+      editProductModal.style.display = 'none';
+    });
+  }
+
+  if (btnSaveEditProduct) {
+    btnSaveEditProduct.addEventListener('click', () => {
+      const brand = editProductBrandInput.value.trim();
+      const sku = editProductSkuInput.value.trim();
+      const idx = parseInt(editProductIndex.value);
+      const prod = allProducts[idx];
+
+      if (!brand || !sku) {
+        showToast('Thông tin trống', 'Không được bỏ trống Brand hoặc SKU.', 'warning');
+        return;
+      }
+
+      const duplicate = allProducts.some((p, i) => p.sku.toLowerCase() === sku.toLowerCase() && i !== idx);
+      if (duplicate) {
+        showToast('Trùng lặp', 'Sản phẩm này đã tồn tại.', 'warning');
+        return;
+      }
+
+      if (useFirebase) {
+        db.collection('products').doc(prod.id).update({ brand, sku }).then(() => {
+          editProductModal.style.display = 'none';
+          showToast('Đã cập nhật', 'Cập nhật sản phẩm thành công.', 'success');
+        }).catch(err => {
+          console.error("Firestore product update error:", err);
+          showToast('Lỗi', 'Không thể cập nhật sản phẩm.', 'error');
+        });
+      } else {
+        allProducts[idx].brand = brand;
+        allProducts[idx].sku = sku;
+        localStorage.setItem('diageo_products', JSON.stringify(allProducts));
+        editProductModal.style.display = 'none';
+        renderProductsCrudList();
+        renderPsProductGrid();
+        showToast('Đã cập nhật', 'Cập nhật sản phẩm thành công.', 'success');
+      }
+    });
+  }
+
+  if (adminProductSearch) {
+    adminProductSearch.addEventListener('input', () => {
+      renderProductsCrudList();
+    });
+  }
+
+  // ----------------------------------------------------
+  // 11. Program CRUD Logic
+  // ----------------------------------------------------
+  // ----------------------------------------------------
   // 11. Program CRUD Logic
   // ----------------------------------------------------
   function renderProgramCrudList() {
@@ -1391,10 +1934,14 @@ document.addEventListener('DOMContentLoaded', () => {
       const item = document.createElement('div');
       item.className = 'program-crud-item';
       
+      const psDisplay = prog.psNames && prog.psNames.length > 0 
+        ? ` <span style="font-size: 0.72rem; color: #a855f7; font-weight: 600;">(${prog.psNames.join(', ')})</span>` 
+        : ' <span style="font-size: 0.72rem; color: var(--text-muted); font-style: italic;">(Chưa gán PS)</span>';
+
       item.innerHTML = `
-        <span class="program-crud-name" title="${prog}">${prog}</span>
+        <span class="program-crud-name" title="${prog.name}">${prog.name}${psDisplay}</span>
         <div class="program-crud-actions">
-          <button type="button" class="btn-crud-action btn-crud-edit" data-index="${index}" title="Sửa tên">
+          <button type="button" class="btn-crud-action btn-crud-edit" data-index="${index}" title="Sửa Outlet">
             <i class="fa-solid fa-pen-to-square"></i>
           </button>
           <button type="button" class="btn-crud-action btn-crud-delete" data-index="${index}" title="Xóa">
@@ -1405,7 +1952,8 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Add edit action listener
       item.querySelector('.btn-crud-edit').addEventListener('click', () => {
-        editProgramNameInput.value = prog;
+        editProgramNameInput.value = prog.name;
+        editProgramPsNamesInput.value = prog.psNames ? prog.psNames.join(', ') : '';
         editProgramIndex.value = index;
         editProgramModal.classList.add('active');
         editProgramNameInput.focus();
@@ -1413,10 +1961,9 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Add delete action listener
       item.querySelector('.btn-crud-delete').addEventListener('click', () => {
-        if (confirm(`Bạn chắc chắn muốn xóa Outlet: "${prog}"?`)) {
+        if (confirm(`Bạn chắc chắn muốn xóa Outlet: "${prog.name}"?`)) {
           if (useFirebase) {
-            db.collection('programs').where('name', '==', prog).get().then(snapshot => {
-              snapshot.forEach(doc => doc.ref.delete());
+            db.collection('programs').doc(prog.id).delete().then(() => {
               showToast('Đã xóa', 'Xóa tên Outlet thành công.', 'success');
             }).catch(err => {
               console.error("Firestore delete error:", err);
@@ -1438,28 +1985,37 @@ document.addEventListener('DOMContentLoaded', () => {
   // Create program
   btnAddProgram.addEventListener('click', () => {
     const newName = newProgramNameInput.value.trim();
+    const psNamesStr = newProgramPsNamesInput.value.trim();
     if (!newName) {
       showToast('Thông tin trống', 'Vui lòng nhập tên Outlet.', 'warning');
       return;
     }
     
-    if (samplePrograms.includes(newName)) {
+    if (samplePrograms.some(p => p.name === newName)) {
       showToast('Trùng lặp', 'Tên Outlet này đã tồn tại.', 'warning');
       return;
     }
+
+    const psNamesVal = psNamesStr ? psNamesStr.split(',').map(s => s.trim()).filter(Boolean) : [];
     
     if (useFirebase) {
-      db.collection('programs').add({ name: newName }).then(() => {
+      db.collection('programs').add({ name: newName, psNames: psNamesVal }).then(() => {
         newProgramNameInput.value = '';
+        newProgramPsNamesInput.value = '';
         showToast('Đã thêm', 'Thêm Outlet mới thành công.', 'success');
       }).catch(err => {
         console.error("Firestore add error:", err);
         showToast('Lỗi', 'Không thể thêm Outlet vào đám mây.', 'error');
       });
     } else {
-      samplePrograms.push(newName);
+      samplePrograms.push({
+        id: `prog_${Date.now()}`,
+        name: newName,
+        psNames: psNamesVal
+      });
       localStorage.setItem('diageo_programs', JSON.stringify(samplePrograms));
       newProgramNameInput.value = '';
+      newProgramPsNamesInput.value = '';
       renderProgramCrudList();
       showToast('Đã thêm', 'Thêm Outlet mới thành công.', 'success');
     }
@@ -1472,8 +2028,9 @@ document.addEventListener('DOMContentLoaded', () => {
   
   btnSaveEditProgram.addEventListener('click', () => {
     const updatedName = editProgramNameInput.value.trim();
+    const updatedPsNamesStr = editProgramPsNamesInput.value.trim();
     const index = parseInt(editProgramIndex.value);
-    const oldName = samplePrograms[index];
+    const prog = samplePrograms[index];
     
     if (!updatedName) {
       showToast('Thông tin trống', 'Tên Outlet không được để trống.', 'warning');
@@ -1481,27 +2038,32 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // Check duplication with other items
-    const duplicate = samplePrograms.some((prog, idx) => prog === updatedName && idx !== index);
+    const duplicate = samplePrograms.some((p, idx) => p.name === updatedName && idx !== index);
     if (duplicate) {
       showToast('Trùng lặp', 'Tên Outlet này đã tồn tại.', 'warning');
       return;
     }
+
+    const psNamesVal = updatedPsNamesStr ? updatedPsNamesStr.split(',').map(s => s.trim()).filter(Boolean) : [];
     
     if (useFirebase) {
-      db.collection('programs').where('name', '==', oldName).get().then(snapshot => {
-        snapshot.forEach(doc => doc.ref.update({ name: updatedName }));
+      db.collection('programs').doc(prog.id).update({ 
+        name: updatedName,
+        psNames: psNamesVal
+      }).then(() => {
         editProgramModal.classList.remove('active');
-        showToast('Đã cập nhật', 'Cập nhật tên Outlet thành công.', 'success');
+        showToast('Đã cập nhật', 'Cập nhật Outlet thành công.', 'success');
       }).catch(err => {
         console.error("Firestore update error:", err);
         showToast('Lỗi', 'Không thể cập nhật Outlet trên đám mây.', 'error');
       });
     } else {
-      samplePrograms[index] = updatedName;
+      samplePrograms[index].name = updatedName;
+      samplePrograms[index].psNames = psNamesVal;
       localStorage.setItem('diageo_programs', JSON.stringify(samplePrograms));
       editProgramModal.classList.remove('active');
       renderProgramCrudList();
-      showToast('Đã cập nhật', 'Cập nhật tên Outlet thành công.', 'success');
+      showToast('Đã cập nhật', 'Cập nhật Outlet thành công.', 'success');
     }
   });
 
@@ -1597,63 +2159,59 @@ document.addEventListener('DOMContentLoaded', () => {
   // Excel XLSX Export with Images using ExcelJS
   btnExportExcel.addEventListener('click', () => {
     if (reports.length === 0) {
-      showToast('Không có dữ liệu', 'Không có báo cáo nào để xuất.', 'warning');
+      showToast('Khong co du lieu', 'Khong co bao cao nao de xuat.', 'warning');
       return;
     }
 
-    showToast('Đang tạo XLSX', 'Đang thiết lập bảng tính và nhúng hình ảnh...', 'info', 3000);
+    showToast('Dang tao XLSX', 'Dang thiet lap bang tinh...', 'info', 3000);
 
-    // Pre-clean all images for all reports before building workbook
-    const reportCleanPromises = reports.map(report => {
+    const eventReports = reports.filter(r => r.activityType !== 'PS');
+    const psReports = reports.filter(r => r.activityType === 'PS');
+
+    const eventCleanPromises = eventReports.map(report => {
       const imagePromises = (report.images || []).map(imgSrc => cleanImageForExport(imgSrc));
       return Promise.all(imagePromises).then(cleanedImages => {
         return { ...report, cleanedImages };
       });
     });
 
-    Promise.all(reportCleanPromises)
-      .then(cleanedReports => {
+    Promise.all(eventCleanPromises)
+      .then(cleanedEventReports => {
         const workbook = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet('Báo cáo Activation');
-        worksheet.views = [{ showGridLines: true }];
 
-        // Calculate maximum images
+        // Sheet 1: Event Activation
+        const wsEvent = workbook.addWorksheet('Bao cao Activation');
+        wsEvent.views = [{ showGridLines: true }];
+
         let maxImages = 4;
-        cleanedReports.forEach(r => {
+        cleanedEventReports.forEach(r => {
           if (r.cleanedImages && r.cleanedImages.length > maxImages) {
             maxImages = r.cleanedImages.length;
           }
         });
 
-        // Set column definitions dynamically
-        const columns = [
-          { header: 'Mã báo cáo', key: 'id', width: 18 },
-          { header: 'Tên Outlet', key: 'outletName', width: 35 },
-          { header: 'Loại hoạt động', key: 'activityType', width: 18 },
-          { header: 'Tên chương trình', key: 'programName', width: 35 },
-          { header: 'Ngày bắt đầu', key: 'startDate', width: 15 },
-          { header: 'Ngày kết thúc', key: 'endDate', width: 15 },
-          { header: 'Loại hình', key: 'eventTypes', width: 35 },
-          { header: 'Nội dung tóm tắt', key: 'eventContent', width: 50 },
-          { header: 'Xác thực cam đoan', key: 'guarantee', width: 20 },
-          { header: 'Thời gian gửi', key: 'timestamp', width: 22 }
+        const eventColumns = [
+          { header: 'Ma bao cao', key: 'id', width: 18 },
+          { header: 'Ten Outlet', key: 'outletName', width: 35 },
+          { header: 'Loai hoat dong', key: 'activityType', width: 18 },
+          { header: 'Ten chuong trinh', key: 'programName', width: 35 },
+          { header: 'Ngay bat dau', key: 'startDate', width: 15 },
+          { header: 'Ngay ket thuc', key: 'endDate', width: 15 },
+          { header: 'Loai hinh', key: 'eventTypes', width: 35 },
+          { header: 'Noi dung tom tat', key: 'eventContent', width: 50 },
+          { header: 'Xac thuc cam doan', key: 'guarantee', width: 20 },
+          { header: 'Thoi gian gui', key: 'timestamp', width: 22 }
         ];
-
         for (let i = 1; i <= maxImages; i++) {
-          columns.push({ header: `Ảnh minh chứng ${i}`, key: `img${i}`, width: 24 });
+          eventColumns.push({ header: `Anh minh chung ${i}`, key: `img${i}`, width: 24 });
         }
-        worksheet.columns = columns;
+        wsEvent.columns = eventColumns;
 
-        // Style the header row
-        const headerRow = worksheet.getRow(1);
-        headerRow.height = 30;
-        headerRow.eachCell((cell) => {
+        const headerRowEvent = wsEvent.getRow(1);
+        headerRowEvent.height = 30;
+        headerRowEvent.eachCell((cell) => {
           cell.font = { bold: true, color: { argb: 'FFFFFF' }, name: 'Segoe UI', size: 11 };
-          cell.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: '4F46E5' }
-          };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '4F46E5' } };
           cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
           cell.border = {
             top: { style: 'thin', color: { argb: 'CBD5E1' } },
@@ -1663,9 +2221,8 @@ document.addEventListener('DOMContentLoaded', () => {
           };
         });
 
-        // Populate data
-        cleanedReports.forEach((report) => {
-          const row = worksheet.addRow({
+        cleanedEventReports.forEach((report) => {
+          const row = wsEvent.addRow({
             id: report.id,
             outletName: report.outletName || report.eventName || '-',
             activityType: report.activityType === 'Display' ? 'Display' : 'Event',
@@ -1680,16 +2237,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
           row.height = 100;
 
-          // Style cells
-          for (let colNum = 1; colNum <= columns.length; colNum++) {
+          for (let colNum = 1; colNum <= eventColumns.length; colNum++) {
             const cell = row.getCell(colNum);
             cell.font = { name: 'Segoe UI', size: 10, color: { argb: '1E293B' } };
             const isCenter = colNum === 1 || colNum === 3 || colNum === 5 || colNum === 6 || colNum === 9 || colNum === 10 || colNum >= 11;
-            cell.alignment = { 
-              vertical: 'middle', 
-              horizontal: isCenter ? 'center' : 'left', 
-              wrapText: true 
-            };
+            cell.alignment = { vertical: 'middle', horizontal: isCenter ? 'center' : 'left', wrapText: true };
             cell.border = {
               top: { style: 'thin', color: { argb: 'F1F5F9' } },
               left: { style: 'thin', color: { argb: 'E2E8F0' } },
@@ -1698,15 +2250,11 @@ document.addEventListener('DOMContentLoaded', () => {
             };
           }
 
-          // Add images to cells
           report.cleanedImages.forEach((imgResult, imgIdx) => {
             if (imgResult.success) {
               try {
-                const imageId = workbook.addImage({
-                  base64: imgResult.base64,
-                  extension: 'jpeg'
-                });
-                worksheet.addImage(imageId, {
+                const imageId = workbook.addImage({ base64: imgResult.base64, extension: 'jpeg' });
+                wsEvent.addImage(imageId, {
                   tl: { col: 10 + imgIdx, row: row.number - 1 },
                   ext: { width: 120, height: 90 },
                   editAs: 'oneCell'
@@ -1715,9 +2263,74 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error("Error adding image to cell:", e);
               }
             } else {
-              worksheet.getCell(row.number, 11 + imgIdx).value = {
-                text: `Xem ảnh ${imgIdx + 1}`,
+              wsEvent.getCell(row.number, 11 + imgIdx).value = {
+                text: `Xem anh ${imgIdx + 1}`,
                 hyperlink: imgResult.originalSrc
+              };
+            }
+          });
+        });
+
+        // Sheet 2: PS On Trade - flat raw data (one row per SKU)
+        const wsPs = workbook.addWorksheet('Bao cao PS On Trade');
+        wsPs.views = [{ showGridLines: true }];
+
+        const psColumns = [
+          { header: 'Ngay bao cao', key: 'reportDate', width: 15 },
+          { header: 'Ten Outlet', key: 'outletName', width: 35 },
+          { header: 'Ten PS', key: 'psName', width: 25 },
+          { header: 'Chuong trinh KM', key: 'promoName', width: 35 },
+          { header: 'Ti le ban uong ruou', key: 'tableRatio', width: 22 },
+          { header: 'Khach uong bia', key: 'beerCustCount', width: 18 },
+          { header: 'Khach ruou doi thu', key: 'competitorCustCount', width: 22 },
+          { header: 'San pham ruou cong ty', key: 'sku', width: 35 },
+          { header: 'So luong ban (chai)', key: 'qty', width: 22 },
+          { header: 'Thoi gian gui', key: 'timestamp', width: 22 }
+        ];
+        wsPs.columns = psColumns;
+
+        const headerRowPs = wsPs.getRow(1);
+        headerRowPs.height = 30;
+        headerRowPs.eachCell((cell) => {
+          cell.font = { bold: true, color: { argb: 'FFFFFF' }, name: 'Segoe UI', size: 11 };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '9333EA' } };
+          cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'CBD5E1' } },
+            left: { style: 'thin', color: { argb: 'CBD5E1' } },
+            bottom: { style: 'medium', color: { argb: '475569' } },
+            right: { style: 'thin', color: { argb: 'CBD5E1' } }
+          };
+        });
+
+        psReports.forEach((report) => {
+          const salesMap = report.companyProductSales || {};
+          Object.keys(salesMap).forEach((sku) => {
+            const qty = salesMap[sku];
+            const row = wsPs.addRow({
+              reportDate: report.reportDate ? formatDate(report.reportDate) : '-',
+              outletName: report.outletName || '-',
+              psName: report.psName || '-',
+              promoName: report.promoName || '-',
+              tableRatio: report.tableRatio || '-',
+              beerCustCount: report.beerCustCount || 0,
+              competitorCustCount: report.competitorCustCount || 0,
+              sku: sku,
+              qty: qty,
+              timestamp: new Date(report.timestamp).toLocaleString('vi-VN')
+            });
+
+            row.height = 24;
+            for (let colNum = 1; colNum <= psColumns.length; colNum++) {
+              const cell = row.getCell(colNum);
+              cell.font = { name: 'Segoe UI', size: 10, color: { argb: '1E293B' } };
+              const isCenter = colNum === 1 || colNum === 5 || colNum === 6 || colNum === 7 || colNum === 9 || colNum === 10;
+              cell.alignment = { vertical: 'middle', horizontal: isCenter ? 'center' : 'left', wrapText: true };
+              cell.border = {
+                top: { style: 'thin', color: { argb: 'F1F5F9' } },
+                left: { style: 'thin', color: { argb: 'E2E8F0' } },
+                bottom: { style: 'thin', color: { argb: 'E2E8F0' } },
+                right: { style: 'thin', color: { argb: 'E2E8F0' } }
               };
             }
           });
@@ -1734,157 +2347,177 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        showToast('Xuất Excel thành công', 'File Excel (.xlsx) chứa hình ảnh đã tải xuống.', 'success');
+        showToast('Xuat Excel thanh cong', 'File Excel (.xlsx) co 2 sheet da tai xuong.', 'success');
       })
       .catch(err => {
         console.error("ExcelJS export error:", err);
-        showToast('Lỗi xuất Excel', 'Không thể tạo file Excel chứa ảnh.', 'error');
+        showToast('Loi xuat Excel', 'Khong the tao file Excel.', 'error');
       });
   });
 
   // PowerPoint Slide Export
   btnExportPPT.addEventListener('click', () => {
     if (reports.length === 0) {
-      showToast('Không có dữ liệu', 'Không có báo cáo nào để xuất.', 'warning');
+      showToast('Khong co du lieu', 'Khong co bao cao nao de xuat.', 'warning');
       return;
     }
-    
-    showToast('Đang tạo PPTX', 'Đang thiết lập bố cục slide PowerPoint...', 'info', 2000);
 
-    // Pre-clean all images for all reports before building PPTX presentation
-    const reportCleanPromises = reports.map(report => {
+    showToast('Dang tao PPTX', 'Dang thiet lap bo cuc slide PowerPoint...', 'info', 2000);
+
+    const eventReports = reports.filter(r => r.activityType !== 'PS');
+    const psReports = reports.filter(r => r.activityType === 'PS');
+
+    const eventCleanPromises = eventReports.map(report => {
       const imagePromises = (report.images || []).map(imgSrc => cleanImageForExport(imgSrc));
       return Promise.all(imagePromises).then(cleanedImages => {
         return { ...report, cleanedImages };
       });
     });
 
-    Promise.all(reportCleanPromises)
-      .then(cleanedReports => {
+    Promise.all(eventCleanPromises)
+      .then(cleanedEventReports => {
         let pptx = new PptxGenJS();
         pptx.title = "Diageo On-Trade Activation Report";
         pptx.layout = "LAYOUT_16x9";
-        
-        cleanedReports.forEach((report, index) => {
-          const images = report.cleanedImages || [];
-          const imagesPerSlide = 6;
-          const totalSlidesForReport = Math.max(1, Math.ceil(images.length / imagesPerSlide));
-          
-          for (let slideIdx = 0; slideIdx < totalSlidesForReport; slideIdx++) {
-            let slide = pptx.addSlide();
-            
-            // 1. Header Bar (Dark Navy)
-            slide.addShape(pptx.ShapeType.rect, {
-              x: 0, y: 0, w: "100%", h: 0.9,
-              fill: { color: "4f46e5" }
-            });
-            
-            slide.addText(`DIAGEO ON-TRADE CONTRACTED PROGRAM`, {
-              x: 0.5, y: 0.15, fontSize: 11, bold: true, color: "fbbf24"
-            });
-            
-            const pageSuffix = totalSlidesForReport > 1 ? ` (Trang ${slideIdx + 1}/${totalSlidesForReport})` : "";
-            slide.addText(`BÁO CÁO ACTIVATION #${index + 1}${pageSuffix}`, {
-              x: 0.5, y: 0.42, fontSize: 18, bold: true, color: "ffffff"
-            });
 
-            // 2. Left side: Report Metadata Card
+        // Build slide order based on original report order
+        reports.forEach((origReport, index) => {
+          if (origReport.activityType === 'PS') {
+            // PS On Trade slide with table
+            let slide = pptx.addSlide();
+
+            slide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: "100%", h: 0.9, fill: { color: "9333ea" } });
+            slide.addText("DIAGEO ON-TRADE CONTRACTED PROGRAM", { x: 0.5, y: 0.15, fontSize: 11, bold: true, color: "fbbf24" });
+            slide.addText(`BAO CAO SO BAN PS ON TRADE #${index + 1}`, { x: 0.5, y: 0.42, fontSize: 18, bold: true, color: "ffffff" });
+
             slide.addShape(pptx.ShapeType.roundRect, {
               x: 0.5, y: 1.2, w: 4.0, h: 4.8,
-              fill: { color: "f8fafc" },
-              line: { color: "cbd5e1", width: 1 },
-              radius: 0.05
+              fill: { color: "f8fafc" }, line: { color: "cbd5e1", width: 1 }, radius: 0.05
             });
-            
-            let textRuns = [];
-            if (report.activityType === 'Display') {
-              textRuns = [
-                { text: "TÊN OUTLET:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-                { text: (report.outletName || report.eventName || '-') + "\n\n", options: { color: "334155", fontSize: 9.5, bold: true } },
-                { text: "LOẠI HOẠT ĐỘNG:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-                { text: "Trưng bày (Display)\n\n", options: { color: "6366f1", bold: true, fontSize: 9.5 } },
-                { text: "TRẠNG THÁI XÁC THỰC:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-                { text: `${report.guarantee} tại thời điểm viếng thăm`, options: { color: "64748b", italic: true, fontSize: 8.5 } }
+
+            slide.addText([
+              { text: "TEN OUTLET:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+              { text: (origReport.outletName || '-') + "\n\n", options: { color: "334155", fontSize: 9.5, bold: true } },
+              { text: "TEN PS:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+              { text: (origReport.psName || '-') + "\n\n", options: { color: "9333ea", fontSize: 9.5, bold: true } },
+              { text: "CHUONG TRINH KM:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+              { text: (origReport.promoName || '-') + "\n\n", options: { color: "334155", fontSize: 9.0 } },
+              { text: "TI LE BAN UONG RUOU:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+              { text: (origReport.tableRatio || '-') + "\n\n", options: { color: "334155", fontSize: 9.0, bold: true } },
+              { text: "KHACH BIA / KHACH RUOU DT:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+              { text: `${origReport.beerCustCount || 0} khach / ${origReport.competitorCustCount || 0} khach\n\n`, options: { color: "334155", fontSize: 9.0 } },
+              { text: "NGAY BAO CAO:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+              { text: (origReport.reportDate ? formatDate(origReport.reportDate) : '-'), options: { color: "475569", fontSize: 9.0 } }
+            ], { x: 0.7, y: 1.35, w: 3.6, h: 4.5, valign: "top" });
+
+            slide.addText("SO LUONG SAN PHAM RUOU CONG TY BAN RA", {
+              x: 4.8, y: 1.2, w: 7.7, fontSize: 10, bold: true, color: "9333ea"
+            });
+
+            const salesMap = origReport.companyProductSales || {};
+            const skuKeys = Object.keys(salesMap);
+            if (skuKeys.length > 0) {
+              const tableRows = [
+                [
+                  { text: "Ten San Pham (SKU)", options: { bold: true, fill: "f3e8ff", color: "7e22ce" } },
+                  { text: "So luong (chai)", options: { bold: true, fill: "f3e8ff", color: "7e22ce", align: "center" } }
+                ]
               ];
+              skuKeys.forEach(sku => {
+                tableRows.push([
+                  { text: sku, options: { fontSize: 9 } },
+                  { text: String(salesMap[sku]), options: { fontSize: 9, align: "center" } }
+                ]);
+              });
+              slide.addTable(tableRows, {
+                x: 4.8, y: 1.5, w: 7.7,
+                border: { type: 'solid', color: 'e2e8f0', width: 1 },
+                fill: "ffffff", valign: "middle"
+              });
             } else {
-              textRuns = [
-                { text: "TÊN OUTLET:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-                { text: (report.outletName || report.eventName || '-') + "\n", options: { color: "334155", fontSize: 9.0, bold: true } },
-                { text: "TÊN CHƯƠNG TRÌNH:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-                { text: (report.programName || '-') + "\n", options: { color: "334155", fontSize: 9.0, bold: true } },
-                { text: "THỜI GIAN DIỄN RA:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-                { text: `${formatDate(report.startDate)} - ${formatDate(report.endDate)}\n`, options: { color: "475569", fontSize: 8.5 } },
-                { text: "LOẠI HÌNH HOẠT ĐỘNG:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-                { text: `${report.eventTypes ? report.eventTypes.join(', ') : '-'}\n`, options: { color: "6366f1", bold: true, fontSize: 8.5 } },
-                { text: "NỘI DUNG TÓM TẮT:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-                { text: `${report.eventContent || '(Không có tóm tắt)'}\n`, options: { color: "475569", fontSize: 8.5 } },
-                { text: "TRẠNG THÁI XÁC THỰC:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
-                { text: `${report.guarantee} tại thời điểm viếng thăm`, options: { color: "64748b", italic: true, fontSize: 8.0 } }
-              ];
+              slide.addText("Khong co du lieu san pham.", {
+                x: 4.8, y: 2.0, w: 7.7, fontSize: 11, italic: true, color: "94a3b8"
+              });
             }
 
-            slide.addText(textRuns, {
-              x: 0.7, y: 1.35, w: 3.6, h: 4.5,
-              valign: "top"
-            });
+          } else {
+            // Event / Display slide
+            const cleanedReport = cleanedEventReports.find(e => e.id === origReport.id);
+            if (!cleanedReport) return;
 
-            // 3. Right side: Dynamic Image Gallery Grid
-            const galleryTitle = report.activityType === 'Display' ? 'HÌNH ẢNH MINH CHỨNG TRƯNG BÀY' : 'HÌNH ẢNH MINH CHỨNG SỰ KIỆN';
-            slide.addText(`${galleryTitle}${pageSuffix.toUpperCase()}`, {
-              x: 4.8, y: 1.2, w: 8.0, fontSize: 10, bold: true, color: "4f46e5"
-            });
+            const images = cleanedReport.cleanedImages || [];
+            const imagesPerSlide = 6;
+            const totalSlidesForReport = Math.max(1, Math.ceil(images.length / imagesPerSlide));
 
-            const startImgIdx = slideIdx * imagesPerSlide;
-            const slideImages = images.slice(startImgIdx, startImgIdx + imagesPerSlide);
-            const imgCount = slideImages.length;
+            for (let slideIdx = 0; slideIdx < totalSlidesForReport; slideIdx++) {
+              let slide = pptx.addSlide();
 
-            const drawImageWithFallback = (imgResult, options) => {
-              if (imgResult && imgResult.success) {
-                slide.addImage({ path: imgResult.dataUrl, ...options });
+              slide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: "100%", h: 0.9, fill: { color: "4f46e5" } });
+              slide.addText("DIAGEO ON-TRADE CONTRACTED PROGRAM", { x: 0.5, y: 0.15, fontSize: 11, bold: true, color: "fbbf24" });
+              const pageSuffix = totalSlidesForReport > 1 ? ` (Trang ${slideIdx + 1}/${totalSlidesForReport})` : "";
+              slide.addText(`BAO CAO ACTIVATION #${index + 1}${pageSuffix}`, { x: 0.5, y: 0.42, fontSize: 18, bold: true, color: "ffffff" });
+
+              slide.addShape(pptx.ShapeType.roundRect, {
+                x: 0.5, y: 1.2, w: 4.0, h: 4.8,
+                fill: { color: "f8fafc" }, line: { color: "cbd5e1", width: 1 }, radius: 0.05
+              });
+
+              let textRuns = [];
+              if (cleanedReport.activityType === 'Display') {
+                textRuns = [
+                  { text: "TEN OUTLET:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+                  { text: (cleanedReport.outletName || cleanedReport.eventName || '-') + "\n\n", options: { color: "334155", fontSize: 9.5, bold: true } },
+                  { text: "LOAI HOAT DONG:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+                  { text: "Trung bay (Display)\n\n", options: { color: "6366f1", bold: true, fontSize: 9.5 } },
+                  { text: "TRANG THAI XAC THUC:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+                  { text: `${cleanedReport.guarantee} tai thoi diem vieng tham`, options: { color: "64748b", italic: true, fontSize: 8.5 } }
+                ];
               } else {
-                slide.addText("[Ảnh lỗi hoặc không thể tải]", {
-                  ...options,
-                  fontSize: 9,
-                  color: "ef4444",
-                  align: "center",
-                  valign: "middle",
-                  fill: { color: "fee2e2" },
-                  line: { color: "fca5a5", width: 1 }
-                });
+                textRuns = [
+                  { text: "TEN OUTLET:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+                  { text: (cleanedReport.outletName || cleanedReport.eventName || '-') + "\n", options: { color: "334155", fontSize: 9.0, bold: true } },
+                  { text: "TEN CHUONG TRINH:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+                  { text: (cleanedReport.programName || '-') + "\n", options: { color: "334155", fontSize: 9.0, bold: true } },
+                  { text: "THOI GIAN DIEN RA:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+                  { text: `${formatDate(cleanedReport.startDate)} - ${formatDate(cleanedReport.endDate)}\n`, options: { color: "475569", fontSize: 8.5 } },
+                  { text: "LOAI HINH HOAT DONG:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+                  { text: `${cleanedReport.eventTypes ? cleanedReport.eventTypes.join(', ') : '-'}\n`, options: { color: "6366f1", bold: true, fontSize: 8.5 } },
+                  { text: "NOI DUNG TOM TAT:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+                  { text: `${cleanedReport.eventContent || '(Khong co tom tat)'}\n`, options: { color: "475569", fontSize: 8.5 } },
+                  { text: "TRANG THAI XAC THUC:\n", options: { bold: true, color: "1e293b", fontSize: 8.0 } },
+                  { text: `${cleanedReport.guarantee} tai thoi diem vieng tham`, options: { color: "64748b", italic: true, fontSize: 8.0 } }
+                ];
               }
-            };
 
-            if (imgCount > 0) {
-              if (imgCount === 1) {
-                drawImageWithFallback(slideImages[0], { x: 5.8, y: 1.6, w: 5.4, h: 3.6 });
-              } 
-              else if (imgCount === 2) {
-                const imgWidth = 3.6;
-                const imgHeight = 2.4;
-                drawImageWithFallback(slideImages[0], { x: 5.0, y: 2.2, w: imgWidth, h: imgHeight });
-                drawImageWithFallback(slideImages[1], { x: 8.8, y: 2.2, w: imgWidth, h: imgHeight });
-              } 
-              else if (imgCount === 3 || imgCount === 4) {
-                const imgWidth = 3.6;
-                const imgHeight = 2.3;
-                drawImageWithFallback(slideImages[0], { x: 4.9, y: 1.5, w: imgWidth, h: imgHeight });
-                drawImageWithFallback(slideImages[1], { x: 8.7, y: 1.5, w: imgWidth, h: imgHeight });
-                drawImageWithFallback(slideImages[2], { x: 4.9, y: 3.9, w: imgWidth, h: imgHeight });
-                if (slideImages[3]) drawImageWithFallback(slideImages[3], { x: 8.7, y: 3.9, w: imgWidth, h: imgHeight });
-              } 
-              else {
-                const imgWidth = 2.4;
-                const imgHeight = 2.3;
-                drawImageWithFallback(slideImages[0], { x: 4.8, y: 1.5, w: imgWidth, h: imgHeight });
-                drawImageWithFallback(slideImages[1], { x: 7.4, y: 1.5, w: imgWidth, h: imgHeight });
-                drawImageWithFallback(slideImages[2], { x: 10.0, y: 1.5, w: imgWidth, h: imgHeight });
-                drawImageWithFallback(slideImages[3], { x: 4.8, y: 3.9, w: imgWidth, h: imgHeight });
-                if (slideImages[4]) drawImageWithFallback(slideImages[4], { x: 7.4, y: 3.9, w: imgWidth, h: imgHeight });
-                if (slideImages[5]) drawImageWithFallback(slideImages[5], { x: 10.0, y: 3.9, w: imgWidth, h: imgHeight });
-              }
-            } else {
-              slide.addText("Không có hình ảnh đính kèm.", {
-                x: 4.8, y: 2.5, w: 8.0, fontSize: 12, italic: true, color: "94a3b8"
+              slide.addText(textRuns, { x: 0.7, y: 1.35, w: 3.6, h: 4.5, valign: "top" });
+
+              const galleryTitle = cleanedReport.activityType === 'Display' ? 'HINH ANH MINH CHUNG TRUNG BAY' : 'HINH ANH MINH CHUNG SU KIEN';
+              slide.addText(`${galleryTitle}${pageSuffix.toUpperCase()}`, {
+                x: 4.8, y: 1.2, w: 8.0, fontSize: 10, bold: true, color: "4f46e5"
+              });
+
+              const startImgIdx = slideIdx * imagesPerSlide;
+              const slideImages = images.slice(startImgIdx, startImgIdx + imagesPerSlide);
+
+              slideImages.forEach((imgResult, imgIdx) => {
+                const col = imgIdx % 3;
+                const row = Math.floor(imgIdx / 3);
+                const imgW = 2.4, imgH = 1.8, gapX = 0.2, gapY = 0.2;
+                const posX = 4.8 + col * (imgW + gapX);
+                const posY = 1.5 + row * (imgH + gapY);
+
+                if (imgResult.success) {
+                  slide.addImage({ data: imgResult.base64, x: posX, y: posY, w: imgW, h: imgH });
+                } else {
+                  slide.addShape(pptx.ShapeType.rect, {
+                    x: posX, y: posY, w: imgW, h: imgH,
+                    fill: { color: "fee2e2" }, line: { color: "fca5a5", width: 1 }
+                  });
+                  slide.addText("Anh loi/ngoai tuyen", {
+                    x: posX, y: posY, w: imgW, h: imgH,
+                    fontSize: 8.5, color: "ef4444", align: "center", valign: "middle"
+                  });
+                }
               });
             }
           }
@@ -1893,13 +2526,516 @@ document.addEventListener('DOMContentLoaded', () => {
         return pptx.writeFile({ fileName: `Diageo_Activation_Report_Export_${Date.now()}.pptx` });
       })
       .then(() => {
-        showToast('Xuất PowerPoint thành công', 'File báo cáo .pptx đã được tải xuống.', 'success');
+        showToast('Xuat PowerPoint thanh cong', 'File bao cao .pptx da duoc tai xuong.', 'success');
       })
       .catch(err => {
         console.error("PPTX export error:", err);
-        showToast('Lỗi xuất PPTX', 'Không thể tạo file slide báo cáo.', 'error');
+        showToast('Loi xuat PPTX', 'Khong the tao file slide bao cao.', 'error');
       });
   });
+
+  // ----------------------------------------------------
+  // PS On Trade Form Interactivity & Logic
+  // ----------------------------------------------------
+  const psFormContainer = document.getElementById('psFormContainer');
+  const psForm = document.getElementById('psForm');
+  const psReportDateInput = document.getElementById('psReportDate');
+  const psOutletInput = document.getElementById('psOutletInput');
+  const psOutletAutocompleteList = document.getElementById('psOutletAutocompleteList');
+  const psNameSelect = document.getElementById('psNameSelect');
+  const psPromoInput = document.getElementById('psPromoInput');
+  const psRatioInput = document.getElementById('psRatioInput');
+  const psBeerCustInput = document.getElementById('psBeerCustInput');
+  const psCompetitorCustInput = document.getElementById('psCompetitorCustInput');
+  const psProductSearch = document.getElementById('psProductSearch');
+  const psProductGrid = document.getElementById('psProductGrid');
+  const btnPsSubmit = document.getElementById('btnPsSubmit');
+  const btnPsBackToLanding = document.getElementById('btnPsBackToLanding');
+  
+  // PS Success screen elements
+  const psSuccessScreen = document.getElementById('psSuccessScreen');
+  const sumPsDate = document.getElementById('sumPsDate');
+  const sumPsOutlet = document.getElementById('sumPsOutlet');
+  const sumPsName = document.getElementById('sumPsName');
+  const sumPsPromo = document.getElementById('sumPsPromo');
+  const sumPsRatio = document.getElementById('sumPsRatio');
+  const sumPsBeerCust = document.getElementById('sumPsBeerCust');
+  const sumPsCompetitorCust = document.getElementById('sumPsCompetitorCust');
+  const sumPsProductsList = document.getElementById('sumPsProductsList');
+  const btnPsNewReport = document.getElementById('btnPsNewReport');
+  const btnPsSuccessBackToSelection = document.getElementById('btnPsSuccessBackToSelection');
+
+  // Track quantities of products entered by user: key is product SKU, value is quantity (number)
+  let psProductQuantities = {};
+
+  // Setup current date on load
+  function setPsCurrentDate() {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    if (psReportDateInput) {
+      psReportDateInput.value = `${dd}/${mm}/${yyyy}`;
+    }
+  }
+
+  function renderPsProductGrid() {
+    if (!psProductGrid) return;
+    psProductGrid.innerHTML = '';
+    
+    // Group products by brand
+    const grouped = {};
+    allProducts.forEach(prod => {
+      if (!grouped[prod.brand]) {
+        grouped[prod.brand] = [];
+      }
+      grouped[prod.brand].push(prod);
+    });
+
+    const searchVal = (psProductSearch ? psProductSearch.value.trim().toLowerCase() : '');
+
+    // For each brand
+    Object.keys(grouped).sort().forEach(brand => {
+      const brandProducts = grouped[brand].sort((a,b) => a.sku.localeCompare(b.sku));
+      
+      // Filter products based on searchVal
+      const filtered = brandProducts.filter(prod => 
+        prod.sku.toLowerCase().includes(searchVal) || prod.brand.toLowerCase().includes(searchVal)
+      );
+
+      // If no matching products in this brand, skip rendering
+      if (filtered.length === 0) return;
+
+      const item = document.createElement('div');
+      item.className = 'brand-accordion-item';
+      
+      // If there is active search, expand by default
+      if (searchVal.length > 0) {
+        item.classList.add('active');
+      }
+
+      const header = document.createElement('div');
+      header.className = 'brand-accordion-header';
+      header.innerHTML = `
+        <span>${brand} (${filtered.length})</span>
+        <i class="fa-solid fa-chevron-down brand-accordion-icon"></i>
+      `;
+      
+      const content = document.createElement('div');
+      content.className = 'brand-accordion-content';
+      if (searchVal.length > 0) {
+        content.style.display = 'flex';
+      }
+
+      filtered.forEach(prod => {
+        const row = document.createElement('div');
+        row.className = 'product-input-row';
+        
+        // Initialize quantity
+        if (psProductQuantities[prod.sku] === undefined) {
+          psProductQuantities[prod.sku] = 0;
+        }
+
+        row.innerHTML = `
+          <span class="product-sku-name">${prod.sku}</span>
+          <div class="product-qty-wrapper">
+            <button type="button" class="product-qty-btn qty-minus" data-sku="${prod.sku}"><i class="fa-solid fa-minus"></i></button>
+            <input type="number" class="product-qty-input" data-sku="${prod.sku}" min="0" value="${psProductQuantities[prod.sku]}">
+            <button type="button" class="product-qty-btn qty-plus" data-sku="${prod.sku}"><i class="fa-solid fa-plus"></i></button>
+          </div>
+        `;
+
+        // Minus button listener
+        row.querySelector('.qty-minus').addEventListener('click', () => {
+          const input = row.querySelector('.product-qty-input');
+          let val = parseInt(input.value) || 0;
+          if (val > 0) {
+            val--;
+            input.value = val;
+            psProductQuantities[prod.sku] = val;
+          }
+        });
+
+        // Plus button listener
+        row.querySelector('.qty-plus').addEventListener('click', () => {
+          const input = row.querySelector('.product-qty-input');
+          let val = parseInt(input.value) || 0;
+          val++;
+          input.value = val;
+          psProductQuantities[prod.sku] = val;
+        });
+
+        // Input change listener
+        row.querySelector('.product-qty-input').addEventListener('input', (e) => {
+          let val = parseInt(e.target.value) || 0;
+          if (val < 0) val = 0;
+          e.target.value = val;
+          psProductQuantities[prod.sku] = val;
+        });
+
+        content.appendChild(row);
+      });
+
+      header.addEventListener('click', () => {
+        const isActive = item.classList.contains('active');
+        if (isActive) {
+          item.classList.remove('active');
+          content.style.display = 'none';
+        } else {
+          item.classList.add('active');
+          content.style.display = 'flex';
+        }
+      });
+
+      item.appendChild(header);
+      item.appendChild(content);
+      psProductGrid.appendChild(item);
+    });
+  }
+
+  // Live search products filter
+  if (psProductSearch) {
+    psProductSearch.addEventListener('input', () => {
+      renderPsProductGrid();
+    });
+  }
+
+  // Autocomplete search for Outlets on PS Form
+  let activePsItemIndex = -1;
+
+  function renderPsOutletAutocomplete(filterText = '') {
+    if (!psOutletAutocompleteList) return;
+    psOutletAutocompleteList.innerHTML = '';
+    activePsItemIndex = -1;
+
+    const filtered = samplePrograms.filter(prog => 
+      prog.name.toLowerCase().includes(filterText.toLowerCase())
+    );
+
+    if (filtered.length === 0) {
+      const emptyDiv = document.createElement('div');
+      emptyDiv.className = 'autocomplete-no-results';
+      emptyDiv.textContent = 'Không tìm thấy Outlet nào...';
+      psOutletAutocompleteList.appendChild(emptyDiv);
+    } else {
+      filtered.forEach((prog, index) => {
+        const item = document.createElement('div');
+        item.className = 'autocomplete-item';
+        item.textContent = prog.name;
+        item.dataset.index = index;
+
+        item.addEventListener('click', () => {
+          selectPsOutlet(prog);
+        });
+
+        psOutletAutocompleteList.appendChild(item);
+      });
+    }
+    psOutletAutocompleteList.style.display = 'block';
+  }
+
+  function selectPsOutlet(prog) {
+    psOutletInput.value = prog.name;
+    psOutletAutocompleteList.style.display = 'none';
+    clearPsError('ps-outlet');
+
+    // Populate Tên PS Select dropdown
+    psNameSelect.innerHTML = '<option value="">-- Chọn Tên PS --</option>';
+    if (prog.psNames && prog.psNames.length > 0) {
+      prog.psNames.forEach(ps => {
+        const opt = document.createElement('option');
+        opt.value = ps;
+        opt.textContent = ps;
+        psNameSelect.appendChild(opt);
+      });
+      psNameSelect.disabled = false;
+    } else {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = 'Không có Tên PS nào được gán';
+      psNameSelect.appendChild(opt);
+      psNameSelect.disabled = true;
+    }
+  }
+
+  if (psOutletInput) {
+    psOutletInput.addEventListener('focus', () => {
+      renderPsOutletAutocomplete(psOutletInput.value);
+    });
+
+    psOutletInput.addEventListener('input', () => {
+      renderPsOutletAutocomplete(psOutletInput.value);
+      if (psOutletInput.value.trim().length >= 1) {
+        clearPsError('ps-outlet');
+      }
+    });
+
+    psOutletInput.addEventListener('keydown', (e) => {
+      const items = psOutletAutocompleteList.querySelectorAll('.autocomplete-item');
+      if (psOutletAutocompleteList.style.display !== 'block' || items.length === 0) return;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        activePsItemIndex = (activePsItemIndex + 1) % items.length;
+        updatePsActiveAutocompleteRow(items);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        activePsItemIndex = (activePsItemIndex - 1 + items.length) % items.length;
+        updatePsActiveAutocompleteRow(items);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (activePsItemIndex >= 0 && activePsItemIndex < items.length) {
+          const index = parseInt(items[activePsItemIndex].dataset.index);
+          const prog = samplePrograms.filter(prog => 
+            prog.name.toLowerCase().includes(psOutletInput.value.toLowerCase())
+          )[index];
+          if (prog) selectPsOutlet(prog);
+        }
+      } else if (e.key === 'Escape') {
+        psOutletAutocompleteList.style.display = 'none';
+      }
+    });
+  }
+
+  function updatePsActiveAutocompleteRow(items) {
+    items.forEach((item, idx) => {
+      if (idx === activePsItemIndex) {
+        item.classList.add('active');
+        item.scrollIntoView({ block: 'nearest' });
+      } else {
+        item.classList.remove('active');
+      }
+    });
+  }
+
+  document.addEventListener('click', (e) => {
+    if (psOutletInput && !psOutletInput.contains(e.target) && !psOutletAutocompleteList.contains(e.target)) {
+      if (psOutletAutocompleteList) psOutletAutocompleteList.style.display = 'none';
+    }
+  });
+
+  // Error handling helpers
+  function showPsError(fieldId, message) {
+    const group = document.getElementById(`group-${fieldId}`);
+    if (group) group.classList.add('has-error');
+    const errEl = document.getElementById(`${fieldId}-error`);
+    if (errEl) {
+      errEl.textContent = message;
+      errEl.style.display = 'block';
+    }
+  }
+
+  function clearPsError(fieldId) {
+    const group = document.getElementById(`group-${fieldId}`);
+    if (group) group.classList.remove('has-error');
+    const errEl = document.getElementById(`${fieldId}-error`);
+    if (errEl) {
+      errEl.textContent = '';
+      errEl.style.display = 'none';
+    }
+  }
+
+  // PS Submit validation & submit handler
+  if (btnPsSubmit) {
+    btnPsSubmit.addEventListener('click', () => {
+      clearPsError('ps-outlet');
+      clearPsError('ps-name');
+      clearPsError('ps-promo');
+      clearPsError('ps-ratio');
+      clearPsError('ps-beer-cust');
+      clearPsError('ps-competitor-cust');
+      const prodErr = document.getElementById('ps-products-error');
+      if (prodErr) {
+        prodErr.style.display = 'none';
+        prodErr.textContent = '';
+      }
+
+      let isValid = true;
+
+      // 1. Outlet validation
+      const outletVal = psOutletInput.value.trim();
+      const outletExists = samplePrograms.some(p => p.name === outletVal);
+      if (!outletVal) {
+        showPsError('ps-outlet', 'Vui lòng chọn hoặc nhập tên Outlet.');
+        isValid = false;
+      } else if (!outletExists) {
+        showPsError('ps-outlet', 'Tên Outlet không hợp lệ (không tồn tại trong hệ thống).');
+        isValid = false;
+      }
+
+      // 2. PS Name validation
+      const psNameVal = psNameSelect.value;
+      if (!psNameVal) {
+        showPsError('ps-name', 'Vui lòng chọn tên PS.');
+        isValid = false;
+      }
+
+      // 3. Promo validation
+      const promoVal = psPromoInput.value.trim();
+      if (!promoVal) {
+        showPsError('ps-promo', 'Vui lòng nhập tên chương trình khuyến mãi.');
+        isValid = false;
+      }
+
+      // 4. Ratio validation (Format: number/number)
+      const ratioVal = psRatioInput.value.trim();
+      const ratioRegex = /^\d+\/\d+$/;
+      if (!ratioVal) {
+        showPsError('ps-ratio', 'Vui lòng nhập tỉ lệ bàn rượu.');
+        isValid = false;
+      } else if (!ratioRegex.test(ratioVal)) {
+        showPsError('ps-ratio', 'Tỉ lệ bàn không đúng định dạng. Ví dụ: 12/24.');
+        isValid = false;
+      }
+
+      // 5. Beer Customers
+      const beerCustVal = psBeerCustInput.value.trim();
+      if (!beerCustVal) {
+        showPsError('ps-beer-cust', 'Vui lòng nhập số khách.');
+        isValid = false;
+      } else if (parseInt(beerCustVal) < 0) {
+        showPsError('ps-beer-cust', 'Số lượng không được âm.');
+        isValid = false;
+      }
+
+      // 6. Competitor Customers
+      const competitorCustVal = psCompetitorCustInput.value.trim();
+      if (!competitorCustVal) {
+        showPsError('ps-competitor-cust', 'Vui lòng nhập số khách.');
+        isValid = false;
+      } else if (parseInt(competitorCustVal) < 0) {
+        showPsError('ps-competitor-cust', 'Số lượng không được âm.');
+        isValid = false;
+      }
+
+      // 7. Products sold quantities check
+      const salesData = {};
+      let totalQty = 0;
+      Object.keys(psProductQuantities).forEach(sku => {
+        const qty = parseInt(psProductQuantities[sku]) || 0;
+        if (qty > 0) {
+          salesData[sku] = qty;
+          totalQty += qty;
+        }
+      });
+
+      if (totalQty === 0) {
+        if (prodErr) {
+          prodErr.textContent = 'Vui lòng nhập số lượng cho ít nhất 1 sản phẩm rượu công ty bán.';
+          prodErr.style.display = 'block';
+        }
+        isValid = false;
+      }
+
+      if (!isValid) {
+        showToast('Gửi thất bại', 'Vui lòng điền đầy đủ và chính xác các thông tin cần thiết.', 'error');
+        return;
+      }
+
+      btnPsSubmit.disabled = true;
+      btnPsSubmit.querySelector('.btn-text').textContent = 'Đang gửi báo cáo...';
+
+      // Parse submitDate
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      const reportDateStr = `${yyyy}-${mm}-${dd}`;
+
+      const reportId = `rep_${Date.now()}`;
+      const newPsReport = {
+        id: reportId,
+        activityType: 'PS',
+        outletName: outletVal,
+        psName: psNameVal,
+        promoName: promoVal,
+        tableRatio: ratioVal,
+        beerCustCount: parseInt(beerCustVal),
+        competitorCustCount: parseInt(competitorCustVal),
+        companyProductSales: salesData,
+        reportDate: reportDateStr,
+        timestamp: today.toISOString()
+      };
+
+      const finishPsSubmit = () => {
+        if (sumPsDate) sumPsDate.textContent = `Ngày báo cáo: ${dd}/${mm}/${yyyy}`;
+        if (sumPsOutlet) sumPsOutlet.textContent = outletVal;
+        if (sumPsName) sumPsName.textContent = psNameVal;
+        if (sumPsPromo) sumPsPromo.textContent = promoVal;
+        if (sumPsRatio) sumPsRatio.textContent = ratioVal;
+        if (sumPsBeerCust) sumPsBeerCust.textContent = beerCustVal;
+        if (sumPsCompetitorCust) sumPsCompetitorCust.textContent = competitorCustVal;
+        
+        if (sumPsProductsList) {
+          sumPsProductsList.innerHTML = '';
+          Object.keys(salesData).forEach(sku => {
+            const row = document.createElement('div');
+            row.style.cssText = 'display: flex; justify-content: space-between; font-size: 0.8rem; border-bottom: 1px dotted var(--border-glass); padding-bottom: 4px;';
+            row.innerHTML = `
+              <span style="color: var(--text-secondary);">${sku}</span>
+              <span style="font-weight: 700; color: var(--text-primary);">${salesData[sku]} chai</span>
+            `;
+            sumPsProductsList.appendChild(row);
+          });
+        }
+
+        if (psFormContainer) psFormContainer.style.display = 'none';
+        if (psSuccessScreen) psSuccessScreen.style.display = 'block';
+        
+        btnPsSubmit.disabled = false;
+        btnPsSubmit.querySelector('.btn-text').textContent = 'Gửi báo cáo số bán';
+        showToast('Gửi thành công', 'Báo cáo số bán PS đã được lưu lại.', 'success');
+        
+        triggerConfetti();
+      };
+
+      if (useFirebase) {
+        db.collection('reports').doc(reportId).set(newPsReport).then(() => {
+          finishPsSubmit();
+        }).catch(err => {
+          console.error("Firestore save error:", err);
+          btnPsSubmit.disabled = false;
+          btnPsSubmit.querySelector('.btn-text').textContent = 'Gửi báo cáo số bán';
+          showToast('Lỗi gửi báo cáo', 'Không thể lưu thông tin vào cơ sở dữ liệu đám mây.', 'error');
+        });
+      } else {
+        reports.push(newPsReport);
+        localStorage.setItem('diageo_reports', JSON.stringify(reports));
+        renderReportsTable();
+        finishPsSubmit();
+      }
+    });
+  }
+
+  // PS New Report reset & navigations
+  if (btnPsNewReport) {
+    btnPsNewReport.addEventListener('click', () => {
+      psForm.reset();
+      psNameSelect.innerHTML = '<option value="">-- Chọn Tên PS (Vui lòng chọn Outlet trước) --</option>';
+      psNameSelect.disabled = true;
+      psProductQuantities = {};
+      if (psProductSearch) psProductSearch.value = '';
+      renderPsProductGrid();
+      setPsCurrentDate();
+
+      if (psSuccessScreen) psSuccessScreen.style.display = 'none';
+      if (psFormContainer) psFormContainer.style.display = 'block';
+    });
+  }
+
+  if (btnPsSuccessBackToSelection) {
+    btnPsSuccessBackToSelection.addEventListener('click', () => {
+      window.history.pushState({}, '', '/');
+      handleRouting();
+    });
+  }
+
+  if (btnPsBackToLanding) {
+    btnPsBackToLanding.addEventListener('click', () => {
+      window.history.pushState({}, '', '/');
+      handleRouting();
+    });
+  }
 
   // Simple Client-side routing based on Vercel deployment paths
   function handleRouting() {
@@ -1909,6 +3045,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Hide everything by default and reset width classes
     if (selectionScreen) selectionScreen.style.display = 'none';
     if (psComingSoonScreen) psComingSoonScreen.style.display = 'none';
+    if (psFormContainer) psFormContainer.style.display = 'none';
+    if (psSuccessScreen) psSuccessScreen.style.display = 'none';
     if (salesFormContainer) salesFormContainer.style.display = 'none';
     if (adminDashboard) adminDashboard.classList.remove('active');
     if (adminLoginModal) adminLoginModal.classList.remove('active');
@@ -1940,8 +3078,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (btnCloseLogin) btnCloseLogin.style.display = 'block';
       if (btnAdminTrigger) btnAdminTrigger.style.display = 'inline-flex';
     } else if (path === '/ps' || path === '/ps/') {
-      if (psComingSoonScreen) psComingSoonScreen.style.display = 'flex';
-      if (btnAdminTrigger) btnAdminTrigger.style.display = 'none';
+      if (psFormContainer) psFormContainer.style.display = 'block';
+      if (btnAdminTrigger) btnAdminTrigger.style.display = 'inline-flex';
+      setPsCurrentDate();
+      renderPsProductGrid();
     } else {
       // Landing page selection
       if (selectionScreen) selectionScreen.style.display = 'block';
@@ -1957,6 +3097,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initialize data stores (after all DOM elements and helper functions are declared)
   initPrograms();
+  initProducts();
   initReports();
   handleRouting();
 });

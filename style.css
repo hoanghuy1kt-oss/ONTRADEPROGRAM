@@ -1876,3 +1876,154 @@ textarea.input-control {
   }
 }
 
+/* Back button in Form */
+.back-to-landing-wrapper {
+  margin-bottom: 20px;
+}
+.btn-back-landing {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 8px;
+  transition: var(--transition-fast);
+}
+.btn-back-landing:hover {
+  color: var(--text-link);
+  background: rgba(79, 70, 229, 0.05);
+}
+
+/* Product Brands Accordion */
+.product-brands-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.brand-accordion-item {
+  border: 1px solid var(--border-glass);
+  border-radius: var(--border-radius-sm);
+  background: #ffffff;
+  overflow: hidden;
+  transition: var(--transition-fast);
+}
+.brand-accordion-item.active {
+  border-color: rgba(168, 85, 247, 0.3);
+  box-shadow: 0 4px 10px rgba(168, 85, 247, 0.04);
+}
+.brand-accordion-header {
+  padding: 12px 16px;
+  background: #f8fafc;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--text-primary);
+  transition: var(--transition-fast);
+}
+.brand-accordion-header:hover {
+  background: #f1f5f9;
+}
+.brand-accordion-icon {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+}
+.brand-accordion-item.active .brand-accordion-icon {
+  transform: rotate(180deg);
+  color: #a855f7;
+}
+.brand-accordion-content {
+  display: none;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-glass);
+  flex-direction: column;
+  gap: 12px;
+}
+.brand-accordion-item.active .brand-accordion-content {
+  display: flex;
+}
+
+/* Product rows in accordion */
+.product-input-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.03);
+}
+.product-input-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.product-sku-name {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+.product-qty-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.product-qty-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border-glass);
+  background: #ffffff;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: var(--transition-fast);
+  user-select: none;
+}
+.product-qty-btn:hover {
+  background: #f1f5f9;
+  border-color: var(--text-muted);
+}
+.product-qty-input {
+  width: 50px;
+  height: 28px;
+  border: 1px solid var(--border-glass);
+  border-radius: 6px;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  background: #f8fafc;
+}
+.product-qty-input:focus {
+  border-color: #a855f7;
+  background: #ffffff;
+  outline: none;
+}
+
+/* Receipt Success Card style */
+.ps-summary-card {
+  position: relative;
+  overflow: hidden;
+}
+.ps-summary-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(to bottom, #a855f7, #7c3aed);
+}
+
