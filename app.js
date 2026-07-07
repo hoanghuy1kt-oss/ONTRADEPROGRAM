@@ -712,6 +712,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!zone || !input) return null;
 
+    if (counterBadge) {
+      counterBadge.textContent = `0/${minCount} ảnh`;
+    }
+
     zone.addEventListener('click', () => {
       input.click();
     });
@@ -779,13 +783,13 @@ document.addEventListener('DOMContentLoaded', () => {
       previewGrid.innerHTML = '';
       if (filesStore.length === 0) {
         counterText.textContent = 'Chưa tải ảnh lên';
-        counterBadge.textContent = '0 ảnh';
+        counterBadge.textContent = `0/${minCount} ảnh`;
         counterBadge.className = 'counter-badge';
         return;
       }
 
       counterText.textContent = `Đã tải lên ${filesStore.length} ảnh`;
-      counterBadge.textContent = `${filesStore.length} ảnh`;
+      counterBadge.textContent = `${filesStore.length}/${minCount} ảnh`;
 
       if (filesStore.length >= minCount) {
         counterBadge.className = 'counter-badge success-badge';
@@ -3224,9 +3228,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof updateStepUI === 'function') updateStepUI();
     
     // Reset file manager state
-    uploadedImagesDisplay1 = [];
-    uploadedImagesDisplay2 = [];
-    uploadedImagesDisplay3 = [];
+    uploadedImagesDisplay1.length = 0;
+    uploadedImagesDisplay2.length = 0;
+    uploadedImagesDisplay3.length = 0;
+    uploadedImages.length = 0;
     if (eventGalleryControl) eventGalleryControl.clear();
     if (displayGallery1Control) displayGallery1Control.clear();
     if (displayGallery2Control) displayGallery2Control.clear();
