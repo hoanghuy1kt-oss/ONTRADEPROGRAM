@@ -224,7 +224,6 @@
           <div style="text-align: center; border-bottom: 1px dashed var(--border-glass); padding-bottom: 15px; margin-bottom: 15px;">
             <div style="font-size: 0.72rem; font-weight: 800; color: #a855f7; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Diageo PS On Trade Report</div>
             <div id="sumPsDate" style="font-size: 0.82rem; font-weight: 700; color: var(--text-primary); margin-bottom: 5px;">Ngày báo cáo: -</div>
-            <div id="sumPsTargetFeedback" style="font-size: 0.82rem; font-weight: 700; color: var(--success-color); display: none;">Tiến độ tháng: 0 / 0 ₫ (0%)</div>
           </div>
 
           <div style="display: flex; flex-direction: column; gap: 12px;">
@@ -259,6 +258,24 @@
             <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-primary); margin-bottom: 10px;"><i class="fa-solid fa-bottle-water" style="color: #a855f7; margin-right: 6px;"></i> Số lượng rượu công ty bán:</div>
             <div id="sumPsProductsList" style="display: flex; flex-direction: column; gap: 8px;">
               <!-- Dynamic product quantities -->
+            </div>
+            </div>
+          </div>
+
+          <!-- Revenue & Target Recap -->
+          <div style="margin-top: 15px; border-top: 1px dashed var(--border-glass); padding-top: 15px; background: rgba(168, 85, 247, 0.05); padding: 15px; border-radius: 8px; margin-bottom: 0px;">
+            <div style="font-size: 0.82rem; font-weight: 800; color: #a855f7; margin-bottom: 12px; text-transform: uppercase;"><i class="fa-solid fa-chart-line" style="margin-right: 6px;"></i> Hiệu Suất Tháng Này</div>
+            <div style="display: flex; justify-content: space-between; gap: 10px; margin-bottom: 8px;">
+              <span style="font-size: 0.82rem; color: var(--text-secondary); font-weight: 500;">Doanh số hôm nay:</span>
+              <span id="sumPsRevenueToday" style="font-size: 0.88rem; color: var(--primary-color); font-weight: 700; text-align: right;">0 ₫</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; gap: 10px; margin-bottom: 8px;">
+              <span style="font-size: 0.82rem; color: var(--text-secondary); font-weight: 500;">Thực đạt / Chỉ tiêu:</span>
+              <span id="sumPsRevenueMonth" style="font-size: 0.82rem; color: var(--text-primary); font-weight: 700; text-align: right;">0 ₫ / 0 ₫</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; gap: 10px;">
+              <span style="font-size: 0.82rem; color: var(--text-secondary); font-weight: 500;">% Hoàn Thành (ACH):</span>
+              <span id="sumPsACH" style="font-size: 0.88rem; color: var(--success-color); font-weight: 800; text-align: right;">0%</span>
             </div>
           </div>
         </div>

@@ -3822,51 +3822,62 @@ document.addEventListener('DOMContentLoaded', () => {
           });
         }
 
-        const sumPsTargetFeedback = document.getElementById('sumPsTargetFeedback');
-        if (sumPsTargetFeedback) {
+        const sumPsRevenueToday = document.getElementById('sumPsRevenueToday');
+        const sumPsRevenueMonth = document.getElementById('sumPsRevenueMonth');
+        const sumPsACH = document.getElementById('sumPsACH');
+
+        if (sumPsRevenueToday && sumPsRevenueMonth && sumPsACH) {
           const monthStr = `${yyyy}-${mm}`;
           const currentTarget = allTargets.find(t => t.pg === psNameVal && t.month === monthStr);
           
-          if (currentTarget && currentTarget.amount > 0) {
-            let totalActual = 0;
-            let reportIds = new Set();
-            reports.forEach(r => {
-              if (r.psName === psNameVal && r.reportDate && r.reportDate.startsWith(monthStr)) {
-                reportIds.add(r.id);
-                if (r.companyProductSales && Array.isArray(r.companyProductSales)) {
-                  r.companyProductSales.forEach(item => {
-                    const prod = allProducts.find(p => p.sku === item.sku);
-                    const price = prod && prod.price ? parseFloat(prod.price) : 0;
-                    const qty = parseInt(item.quantity) || 0;
-                    totalActual += (qty * price);
-                  });
-                }
-              }
+          let revenueToday = 0;
+          if (newPsReport.companyProductSales) {
+            Object.keys(newPsReport.companyProductSales).forEach(sku => {
+              const prod = allProducts.find(p => p.sku === sku);
+              const price = prod && prod.price ? parseFloat(prod.price) : 0;
+              const qty = parseInt(newPsReport.companyProductSales[sku]) || 0;
+              revenueToday += (qty * price);
             });
+          }
+          
+          sumPsRevenueToday.textContent = new Intl.NumberFormat('vi-VN').format(revenueToday) + ' ₫';
 
-            if (!reportIds.has(reportId)) {
-              if (newPsReport.companyProductSales && Array.isArray(newPsReport.companyProductSales)) {
-                newPsReport.companyProductSales.forEach(item => {
-                  const prod = allProducts.find(p => p.sku === item.sku);
+          let totalActual = 0;
+          let reportIds = new Set();
+          reports.forEach(r => {
+            if (r.psName === psNameVal && r.reportDate && r.reportDate.startsWith(monthStr)) {
+              reportIds.add(r.id);
+              if (r.companyProductSales) {
+                Object.keys(r.companyProductSales).forEach(sku => {
+                  const prod = allProducts.find(p => p.sku === sku);
                   const price = prod && prod.price ? parseFloat(prod.price) : 0;
-                  const qty = parseInt(item.quantity) || 0;
+                  const qty = parseInt(r.companyProductSales[sku]) || 0;
                   totalActual += (qty * price);
                 });
               }
             }
+          });
 
+          // Include the current report if it hasn't been added to the reports array yet
+          if (!reportIds.has(reportId)) {
+             totalActual += revenueToday;
+          }
+
+          if (currentTarget && currentTarget.amount > 0) {
             const ach = (totalActual / currentTarget.amount) * 100;
-            sumPsTargetFeedback.textContent = `Tiến độ tháng: ${new Intl.NumberFormat('vi-VN').format(totalActual)} / ${new Intl.NumberFormat('vi-VN').format(currentTarget.amount)} ₫ (${ach.toFixed(1)}%)`;
-            sumPsTargetFeedback.style.display = 'block';
+            
+            sumPsRevenueMonth.textContent = `${new Intl.NumberFormat('vi-VN').format(totalActual)} ₫ / ${new Intl.NumberFormat('vi-VN').format(currentTarget.amount)} ₫`;
+            sumPsACH.textContent = `${ach.toFixed(1)}%`;
             
             let color = 'var(--text-primary)';
             if (ach >= 100) color = 'var(--success-color)';
             else if (ach >= 80) color = '#eab308';
             else color = 'var(--danger-color)';
-            sumPsTargetFeedback.style.color = color;
-
+            sumPsACH.style.color = color;
           } else {
-            sumPsTargetFeedback.style.display = 'none';
+            sumPsRevenueMonth.textContent = `${new Intl.NumberFormat('vi-VN').format(totalActual)} ₫ / 0 ₫`;
+            sumPsACH.textContent = '0%';
+            sumPsACH.style.color = 'var(--text-primary)';
           }
         }
 
