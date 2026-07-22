@@ -4432,24 +4432,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const pgStats = {};
     
     monthTargets.forEach(t => {
-      if (!pgStats[t.pg]) {
-        pgStats[t.pg] = {
+      const m = t.month || 'Unknown';
+      const key = `${t.pg}_${m}`;
+      if (!pgStats[key]) {
+        pgStats[key] = {
           pg: t.pg,
+          month: m,
           outlet: t.outlet,
           target: 0,
           actual: 0
         };
       }
-      pgStats[t.pg].target += (parseFloat(t.amount) || 0);
+      pgStats[key].target += (parseFloat(t.amount) || 0);
     });
 
     monthReports.forEach(r => {
       const pg = r.psName;
       if (!pg) return;
+      const m = r.reportDate ? r.reportDate.substring(0, 7) : 'Unknown';
+      const key = `${pg}_${m}`;
       
-      if (!pgStats[pg]) {
-        pgStats[pg] = {
+      if (!pgStats[key]) {
+        pgStats[key] = {
           pg: pg,
+          month: m,
           outlet: r.outletName || r.programName || '-',
           target: 0,
           actual: 0
@@ -4465,7 +4471,7 @@ document.addEventListener('DOMContentLoaded', () => {
           reportRevenue += (qty * price);
         });
       }
-      pgStats[pg].actual += reportRevenue;
+      pgStats[key].actual += reportRevenue;
     });
 
     const statsArray = Object.values(pgStats);
@@ -4486,7 +4492,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dashboardLeaderboard) {
       dashboardLeaderboard.innerHTML = '';
       
-      statsArray.sort((a, b) => b.ach - a.ach);
+      statsArray.sort((a, b) => {
+        const pDiff = a.pg.localeCompare(b.pg);
+        if (pDiff !== 0) return pDiff;
+        return a.month.localeCompare(b.month);
+      });
 
       statsArray.forEach(s => {
         const tr = document.createElement('tr');
@@ -4497,9 +4507,16 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (s.ach >= 80) achColor = '#eab308';
         else if (s.target > 0) achColor = 'var(--danger-color)';
 
+        let displayMonth = s.month;
+        if (displayMonth && displayMonth.includes('-')) {
+            const parts = displayMonth.split('-');
+            displayMonth = `${parts[1]}/${parts[0]}`;
+        }
+
         tr.innerHTML = `
           <td style="padding: 10px 8px; font-weight: 600;">${s.pg}</td>
           <td style="padding: 10px 8px; color: var(--text-secondary);">${s.outlet}</td>
+          <td style="padding: 10px 8px; color: var(--text-secondary);">${displayMonth}</td>
           <td style="padding: 10px 8px; text-align: right;">${new Intl.NumberFormat('vi-VN').format(s.target)}</td>
           <td style="padding: 10px 8px; text-align: right; font-weight: 600;">${new Intl.NumberFormat('vi-VN').format(s.actual)}</td>
           <td style="padding: 10px 8px; text-align: right; color: ${achColor}; font-weight: 700;">${s.target > 0 ? s.ach.toFixed(1) + '%' : 'N/A'}</td>
