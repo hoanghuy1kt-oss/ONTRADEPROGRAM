@@ -4020,6 +4020,7 @@ document.addEventListener('DOMContentLoaded', () => {
           { header: 'Chỉ Tiêu (VNĐ)', key: 'amount', width: 25 }
         ];
         
+        sheet1.getColumn('month').numFmt = 'mm/yyyy';
         sheet1.getColumn('amount').numFmt = '#,##0';
         
         sheet1.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
@@ -4029,7 +4030,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let nextMM = today.getMonth() + 2;
         let nextYYYY = yyyy;
         if (nextMM > 12) { nextMM = 1; nextYYYY++; }
-        const exMonth = `${String(nextMM).padStart(2, '0')}/${nextYYYY}`;
+        const exMonth = new Date(nextYYYY, nextMM - 1, 1);
         
         sheet1.addRow({ month: exMonth, outlet: 'The ATM Bar', pg: 'Nguyen Van A', amount: 50000000 });
 
