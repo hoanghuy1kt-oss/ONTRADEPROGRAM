@@ -4306,7 +4306,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let monthReports = reports.filter(r => r.reportDate && r.reportDate.startsWith(filterMonth));
     if (filterOutlet) {
-      monthReports = monthReports.filter(r => r.programName === filterOutlet);
+      monthReports = monthReports.filter(r => r.outletName === filterOutlet);
     }
 
     let monthTargets = allTargets.filter(t => t.month === filterMonth);
@@ -4320,7 +4320,7 @@ document.addEventListener('DOMContentLoaded', () => {
       pgStats[t.pg] = {
         pg: t.pg,
         outlet: t.outlet,
-        target: t.amount,
+        target: parseFloat(t.amount) || 0,
         actual: 0
       };
     });
@@ -4332,18 +4332,18 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!pgStats[pg]) {
         pgStats[pg] = {
           pg: pg,
-          outlet: r.programName,
+          outlet: r.outletName || r.programName || '-',
           target: 0,
           actual: 0
         };
       }
       
       let reportRevenue = 0;
-      if (r.companyProductSales && Array.isArray(r.companyProductSales)) {
-        r.companyProductSales.forEach(item => {
-          const prod = allProducts.find(p => p.sku === item.sku);
+      if (r.companyProductSales) {
+        Object.keys(r.companyProductSales).forEach(sku => {
+          const qty = parseInt(r.companyProductSales[sku]) || 0;
+          const prod = allProducts.find(p => p.sku === sku);
           const price = prod && prod.price ? parseFloat(prod.price) : 0;
-          const qty = parseInt(item.quantity) || 0;
           reportRevenue += (qty * price);
         });
       }
@@ -4410,15 +4410,15 @@ document.addEventListener('DOMContentLoaded', () => {
       
       const filterOutlet = dashboardOutletFilter ? dashboardOutletFilter.value : '';
       let mReports = reports.filter(r => r.reportDate && r.reportDate.startsWith(monthStr));
-      if (filterOutlet) mReports = mReports.filter(r => r.programName === filterOutlet);
+      if (filterOutlet) mReports = mReports.filter(r => r.outletName === filterOutlet);
       
       let mActual = 0;
       mReports.forEach(r => {
-        if (r.companyProductSales && Array.isArray(r.companyProductSales)) {
-          r.companyProductSales.forEach(item => {
-            const prod = allProducts.find(p => p.sku === item.sku);
+        if (r.companyProductSales) {
+          Object.keys(r.companyProductSales).forEach(sku => {
+            const qty = parseInt(r.companyProductSales[sku]) || 0;
+            const prod = allProducts.find(p => p.sku === sku);
             const price = prod && prod.price ? parseFloat(prod.price) : 0;
-            const qty = parseInt(item.quantity) || 0;
             mActual += (qty * price);
           });
         }
