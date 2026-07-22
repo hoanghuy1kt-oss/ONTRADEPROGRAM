@@ -32,6 +32,21 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('diageo_data_wiped_v2', 'true');
     console.log("Old Diageo mock data wiped from localStorage.");
   }
+  
+  // One-time target wipe to fix invalid data
+  if (!localStorage.getItem('target_wiped_v3')) {
+    localStorage.removeItem('diageo_targets');
+    if (useFirebase) {
+      db.collection('pg_targets').get().then(snap => {
+        const batch = db.batch();
+        snap.forEach(doc => batch.delete(doc.ref));
+        return batch.commit();
+      }).then(() => {
+        console.log("Old target data wiped from Firebase.");
+      }).catch(e => console.error("Error wiping targets:", e));
+    }
+    localStorage.setItem('target_wiped_v3', 'true');
+  }
 
   // DOM Elements
   const form = document.getElementById('activationForm');
@@ -4085,6 +4100,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.load(arrayBuffer);
         const worksheet = workbook.worksheets[0]; // First sheet
+
+        const headerRow = worksheet.getRow(1);
+        const col1Header = headerRow.getCell(1).text ? headerRow.getCell(1).text.trim() : '';
+        const col3Header = headerRow.getCell(3).text ? headerRow.getCell(3).text.trim() : '';
+        
+        if (!col1Header.includes('Tháng') || !col3Header.includes('Tên PG')) {
+          showToast('Lỗi', 'File không đúng định dạng mẫu Target. Vui lòng tải mẫu Target và thử lại.', 'error');
+          e.target.value = '';
+          return;
+        }
 
         const newTargets = [];
         
