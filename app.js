@@ -33,19 +33,27 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log("Old Diageo mock data wiped from localStorage.");
   }
   
-  // One-time target wipe to fix invalid data
-  if (!localStorage.getItem('target_wiped_v3')) {
+  // One-time target wipe to fix invalid data (>500 docs support)
+  if (!localStorage.getItem('target_wiped_v4')) {
     localStorage.removeItem('diageo_targets');
     if (useFirebase) {
-      db.collection('pg_targets').get().then(snap => {
-        const batch = db.batch();
-        snap.forEach(doc => batch.delete(doc.ref));
-        return batch.commit();
-      }).then(() => {
-        console.log("Old target data wiped from Firebase.");
+      async function clearAllTargets() {
+        let snapshot = await db.collection('pg_targets').limit(400).get();
+        while (!snapshot.empty) {
+          const batch = db.batch();
+          snapshot.forEach(doc => batch.delete(doc.ref));
+          await batch.commit();
+          snapshot = await db.collection('pg_targets').limit(400).get();
+        }
+      }
+      clearAllTargets().then(() => {
+        console.log("Old target data completely wiped from Firebase.");
+        localStorage.setItem('target_wiped_v4', 'true');
+        setTimeout(() => window.location.reload(), 1000);
       }).catch(e => console.error("Error wiping targets:", e));
+    } else {
+      localStorage.setItem('target_wiped_v4', 'true');
     }
-    localStorage.setItem('target_wiped_v3', 'true');
   }
 
   // DOM Elements
