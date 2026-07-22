@@ -4014,11 +4014,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // Sheet 1: Template
         const sheet1 = workbook.addWorksheet('Nhap_Chi_Tieu');
         sheet1.columns = [
-          { header: 'Tháng (YYYY-MM)', key: 'month', width: 20 },
+          { header: 'Tháng (MM/YYYY)', key: 'month', width: 20 },
           { header: 'Tên Outlet', key: 'outlet', width: 35 },
           { header: 'Tên PG', key: 'pg', width: 25 },
           { header: 'Chỉ Tiêu (VNĐ)', key: 'amount', width: 25 }
         ];
+        
+        sheet1.getColumn('amount').numFmt = '#,##0';
         
         sheet1.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
         sheet1.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF7C3AED' } };
@@ -4027,7 +4029,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let nextMM = today.getMonth() + 2;
         let nextYYYY = yyyy;
         if (nextMM > 12) { nextMM = 1; nextYYYY++; }
-        const exMonth = `${nextYYYY}-${String(nextMM).padStart(2, '0')}`;
+        const exMonth = `${String(nextMM).padStart(2, '0')}/${nextYYYY}`;
         
         sheet1.addRow({ month: exMonth, outlet: 'The ATM Bar', pg: 'Nguyen Van A', amount: 50000000 });
 
@@ -4101,7 +4103,22 @@ document.addEventListener('DOMContentLoaded', () => {
              const y = monthCell.getFullYear();
              monthStr = `${y}-${m}`;
           } else {
-             monthStr = monthCell.toString().trim();
+             let str = monthCell.toString().trim();
+             if (str.includes('/')) {
+               const parts = str.split('/');
+               if (parts.length === 2) {
+                 const m = parts[0].padStart(2, '0');
+                 const y = parts[1];
+                 monthStr = `${y}-${m}`;
+               } else if (parts.length === 3) {
+                 // if DD/MM/YYYY
+                 const m = parts[1].padStart(2, '0');
+                 const y = parts[2];
+                 monthStr = `${y}-${m}`;
+               }
+             } else {
+               monthStr = str;
+             }
           }
 
           let amount = 0;
