@@ -1317,6 +1317,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnCancelEditProduct = document.getElementById('btnCancelEditProduct');
   const btnSaveEditProduct = document.getElementById('btnSaveEditProduct');
 
+  // Number formatting utility
+  function formatCurrencyInput(e) {
+    let val = e.target.value.replace(/[^0-9]/g, '');
+    if (val) {
+      e.target.value = Number(val).toLocaleString('en-US');
+    } else {
+      e.target.value = '';
+    }
+  }
+  if (newProductPriceInput) newProductPriceInput.addEventListener('input', formatCurrencyInput);
+  if (editProductPriceInput) editProductPriceInput.addEventListener('input', formatCurrencyInput);
+
   // Detail View selectors
   const reportDetailModal = document.getElementById('reportDetailModal');
   const detailActivityBadge = document.getElementById('detailActivityBadge');
@@ -2238,7 +2250,7 @@ document.addEventListener('DOMContentLoaded', () => {
           editProductSkuInput.value = prod.sku;
           if (editProductPriceInput) {
             if (prod.price && !isNaN(Number(prod.price))) {
-              editProductPriceInput.value = Math.round(Number(prod.price));
+              editProductPriceInput.value = Math.round(Number(prod.price)).toLocaleString('en-US');
             } else {
               editProductPriceInput.value = prod.price || '';
             }
@@ -2283,7 +2295,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnAddProduct.addEventListener('click', () => {
       const brand = newProductBrandInput.value.trim();
       const sku = newProductSkuInput.value.trim();
-      const price = newProductPriceInput ? newProductPriceInput.value.trim() : '';
+      const price = newProductPriceInput ? newProductPriceInput.value.trim().replace(/,/g, '') : '';
 
       if (!brand || !sku) {
         showToast('Thông tin trống', 'Vui lòng nhập cả Brand và Tên sản phẩm SKU.', 'warning');
@@ -2333,7 +2345,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnSaveEditProduct.addEventListener('click', () => {
       const brand = editProductBrandInput.value.trim();
       const sku = editProductSkuInput.value.trim();
-      const price = editProductPriceInput ? editProductPriceInput.value.trim() : '';
+      const price = editProductPriceInput ? editProductPriceInput.value.trim().replace(/,/g, '') : '';
       const idx = parseInt(editProductIndex.value);
       const prod = allProducts[idx];
 
@@ -3893,7 +3905,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const month = targetMonth.value;
       const outlet = targetOutlet.value;
       const pg = targetPG.value;
-      const amount = parseFloat(targetAmount.value);
+      const amount = parseFloat(targetAmount.value.replace(/,/g, ''));
       
       if (!month || !outlet || !pg || isNaN(amount)) {
         showToast('Lỗi', 'Vui lòng nhập đầy đủ thông tin chỉ tiêu.', 'error');
