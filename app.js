@@ -4432,12 +4432,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const pgStats = {};
     
     monthTargets.forEach(t => {
-      pgStats[t.pg] = {
-        pg: t.pg,
-        outlet: t.outlet,
-        target: parseFloat(t.amount) || 0,
-        actual: 0
-      };
+      if (!pgStats[t.pg]) {
+        pgStats[t.pg] = {
+          pg: t.pg,
+          outlet: t.outlet,
+          target: 0,
+          actual: 0
+        };
+      }
+      pgStats[t.pg].target += (parseFloat(t.amount) || 0);
     });
 
     monthReports.forEach(r => {
