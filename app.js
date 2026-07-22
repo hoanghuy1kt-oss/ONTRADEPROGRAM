@@ -4039,10 +4039,10 @@ document.addEventListener('DOMContentLoaded', () => {
         ];
         sheet2.getRow(1).font = { bold: true };
         
-        allPrograms.forEach(prog => {
+        samplePrograms.forEach(prog => {
           if (prog.psNames && Array.isArray(prog.psNames)) {
             prog.psNames.forEach(pgName => {
-              sheet2.addRow({ outlet: prog.outlet, pg: pgName });
+              sheet2.addRow({ outlet: prog.name, pg: pgName });
             });
           }
         });
