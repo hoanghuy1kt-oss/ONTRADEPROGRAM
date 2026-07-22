@@ -2569,15 +2569,47 @@ document.addEventListener('DOMContentLoaded', () => {
         workbook.created = new Date();
         const worksheet = workbook.addWorksheet('Products Catalog');
 
+        // Add Title
+        worksheet.mergeCells('A1:C1');
+        const titleRow = worksheet.getRow(1);
+        titleRow.getCell(1).value = 'DANH MỤC SẢN PHẨM DIAGEO';
+        titleRow.font = { name: 'Arial', size: 16, bold: true, color: { argb: 'FF000000' } };
+        titleRow.alignment = { vertical: 'middle', horizontal: 'center' };
+        titleRow.height = 30;
+
+        // Add Export Date
+        worksheet.mergeCells('A2:C2');
+        const dateRow = worksheet.getRow(2);
+        const now = new Date();
+        dateRow.getCell(1).value = `Ngày xuất: ${now.toLocaleDateString('vi-VN')} ${now.toLocaleTimeString('vi-VN')}`;
+        dateRow.font = { name: 'Arial', size: 10, italic: true, color: { argb: 'FF555555' } };
+        dateRow.alignment = { vertical: 'middle', horizontal: 'right' };
+        dateRow.height = 20;
+
+        // Empty row for spacing
+        worksheet.addRow([]);
+
+        // Setup Header Row (Row 4)
         worksheet.columns = [
-          { header: 'Nhóm Brand', key: 'brand', width: 25 },
-          { header: 'Tên sản phẩm (SKU)', key: 'sku', width: 35 },
-          { header: 'Giá (VND)', key: 'price', width: 20 }
+          { key: 'brand', width: 30 },
+          { key: 'sku', width: 45 },
+          { key: 'price', width: 25 }
         ];
 
-        worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-        worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F81BD' } };
-        worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+        const headerRow = worksheet.getRow(4);
+        headerRow.values = ['Nhóm Brand', 'Tên sản phẩm (SKU)', 'Giá (VND)'];
+        headerRow.font = { name: 'Arial', bold: true, color: { argb: 'FFFFFFFF' }, size: 12 };
+        headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F81BD' } };
+        headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+        headerRow.height = 25;
+
+        // Apply borders to header
+        headerRow.eachCell((cell) => {
+          cell.border = {
+            top: { style: 'thin' }, left: { style: 'thin' },
+            bottom: { style: 'thin' }, right: { style: 'thin' }
+          };
+        });
 
         // Group and sort by Brand then SKU
         const grouped = {};
@@ -2586,6 +2618,7 @@ document.addEventListener('DOMContentLoaded', () => {
           grouped[prod.brand].push(prod);
         });
 
+        let rowIndex = 5;
         Object.keys(grouped).sort().forEach(brand => {
           const prods = grouped[brand].sort((a,b) => a.sku.localeCompare(b.sku));
           prods.forEach(prod => {
@@ -2595,8 +2628,27 @@ document.addEventListener('DOMContentLoaded', () => {
               price: prod.price ? Number(prod.price) : ''
             };
             const row = worksheet.addRow(rowData);
+            
+            // Format cells
             row.getCell('price').numFmt = '#,##0'; // format number with commas
             row.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+            row.font = { name: 'Arial', size: 11 };
+            
+            // Alternating row background
+            if (rowIndex % 2 === 0) {
+              row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
+            }
+
+            // Borders for all cells
+            row.eachCell({ includeEmpty: true }, (cell) => {
+              cell.border = {
+                top: { style: 'thin', color: { argb: 'FFDDDDDD' } },
+                left: { style: 'thin', color: { argb: 'FFDDDDDD' } },
+                bottom: { style: 'thin', color: { argb: 'FFDDDDDD' } },
+                right: { style: 'thin', color: { argb: 'FFDDDDDD' } }
+              };
+            });
+            rowIndex++;
           });
         });
 
