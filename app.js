@@ -4262,8 +4262,14 @@ document.addEventListener('DOMContentLoaded', () => {
       item.style.justifyContent = 'space-between';
       item.style.alignItems = 'center';
       
+      const monthParts = t.month.split('-');
+      const displayMonth = monthParts.length === 2 ? `${monthParts[1]}/${monthParts[0]}` : t.month;
+      
       const info = document.createElement('div');
-      info.innerHTML = `<div style="font-weight: 600; color: var(--text-primary);">${t.pg}</div>
+      info.innerHTML = `<div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+                          ${t.pg}
+                          <span style="font-size: 0.7rem; background: var(--bg-secondary); padding: 2px 6px; border-radius: 4px; color: var(--text-secondary); border: 1px solid var(--border-glass); font-weight: normal;">Tháng ${displayMonth}</span>
+                        </div>
                         <div style="font-size: 0.8rem; color: var(--text-secondary);"><i class="fa-solid fa-store" style="font-size: 0.7rem; margin-right: 4px;"></i>${t.outlet}</div>`;
       
       const rightSide = document.createElement('div');
