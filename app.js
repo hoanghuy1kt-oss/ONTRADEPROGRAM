@@ -1830,18 +1830,31 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         // Read Mode for PS On Trade
         let prodSalesHtml = '';
+        let totalRevenue = 0;
         if (report.companyProductSales) {
           Object.keys(report.companyProductSales).forEach(sku => {
+            const qty = report.companyProductSales[sku];
+            const product = allProducts.find(p => p.sku === sku);
+            const price = product && product.price ? parseFloat(product.price) : 0;
+            totalRevenue += price * qty;
+
             prodSalesHtml += `
               <div style="display: flex; justify-content: space-between; font-size: 0.82rem; border-bottom: 1px dotted var(--border-glass); padding-bottom: 4px;">
                 <span style="color: var(--text-secondary);">${sku}</span>
-                <span style="font-weight: 700; color: var(--text-primary);">${report.companyProductSales[sku]} chai</span>
+                <span style="font-weight: 700; color: var(--text-primary);">${qty} chai</span>
               </div>
             `;
           });
         }
         if (!prodSalesHtml) {
           prodSalesHtml = '<div style="font-size: 0.82rem; color: var(--text-muted); font-style: italic;">Không có số bán rượu.</div>';
+        } else {
+          prodSalesHtml += `
+              <div style="display: flex; justify-content: space-between; font-size: 0.85rem; padding-top: 8px; margin-top: 4px;">
+                <span style="color: var(--text-primary); font-weight: 800;">Tổng doanh số:</span>
+                <span style="font-weight: 800; color: var(--primary-color);">${new Intl.NumberFormat('vi-VN').format(totalRevenue)} ₫</span>
+              </div>
+          `;
         }
 
         reportDetailBody.innerHTML = `
