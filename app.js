@@ -4054,7 +4054,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let exMonth = new Date();
             if (t.month && t.month.includes('-')) {
               const parts = t.month.split('-');
-              exMonth = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, 1);
+              exMonth = new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, 1));
             }
             sheet1.addRow({ month: exMonth, outlet: t.outlet, pg: t.pg, amount: t.amount });
           });
@@ -4063,7 +4063,7 @@ document.addEventListener('DOMContentLoaded', () => {
           let nextMM = today.getMonth() + 2;
           let nextYYYY = yyyy;
           if (nextMM > 12) { nextMM = 1; nextYYYY++; }
-          const exMonth = new Date(nextYYYY, nextMM - 1, 1);
+          const exMonth = new Date(Date.UTC(nextYYYY, nextMM - 1, 1));
           sheet1.addRow({ month: exMonth, outlet: 'The ATM Bar', pg: 'Nguyen Van A', amount: 50000000 });
         }
 
