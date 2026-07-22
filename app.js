@@ -1250,13 +1250,16 @@ document.addEventListener('DOMContentLoaded', () => {
   // Product CRUD selectors
   const newProductBrandInput = document.getElementById('newProductBrand');
   const newProductSkuInput = document.getElementById('newProductSku');
+  const newProductPriceInput = document.getElementById('newProductPrice');
   const btnAddProduct = document.getElementById('btnAddProduct');
   const adminProductSearch = document.getElementById('adminProductSearch');
+  const btnExportProductsExcel = document.getElementById('btnExportProductsExcel');
   const productCrudList = document.getElementById('productCrudList');
 
   const editProductModal = document.getElementById('editProductModal');
   const editProductBrandInput = document.getElementById('editProductBrandInput');
   const editProductSkuInput = document.getElementById('editProductSkuInput');
+  const editProductPriceInput = document.getElementById('editProductPriceInput');
   const editProductIndex = document.getElementById('editProductIndex');
   const btnCancelEditProduct = document.getElementById('btnCancelEditProduct');
   const btnSaveEditProduct = document.getElementById('btnSaveEditProduct');
@@ -2161,7 +2164,10 @@ document.addEventListener('DOMContentLoaded', () => {
         item.style.cssText = 'padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-glass);';
         
         item.innerHTML = `
-          <span style="font-size: 0.82rem; font-weight: 500; color: var(--text-primary);">${prod.sku}</span>
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-size: 0.82rem; font-weight: 500; color: var(--text-primary);">${prod.sku}</span>
+            ${prod.price ? `<span style="font-size: 0.75rem; color: var(--text-secondary);">Giá: ${Number(prod.price).toLocaleString('vi-VN')}</span>` : ''}
+          </div>
           <div class="program-crud-actions">
             <button type="button" class="btn-crud-action btn-product-edit" data-id="${prod.id}" title="Sửa sản phẩm">
               <i class="fa-solid fa-pen-to-square"></i>
@@ -2177,6 +2183,7 @@ document.addEventListener('DOMContentLoaded', () => {
         item.querySelector('.btn-product-edit').addEventListener('click', () => {
           editProductBrandInput.value = prod.brand;
           editProductSkuInput.value = prod.sku;
+          if (editProductPriceInput) editProductPriceInput.value = prod.price || '';
           editProductIndex.value = overallIdx;
           editProductModal.style.display = 'flex';
           editProductBrandInput.focus();
@@ -2217,6 +2224,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnAddProduct.addEventListener('click', () => {
       const brand = newProductBrandInput.value.trim();
       const sku = newProductSkuInput.value.trim();
+      const price = newProductPriceInput ? newProductPriceInput.value.trim() : '';
 
       if (!brand || !sku) {
         showToast('Thông tin trống', 'Vui lòng nhập cả Brand và Tên sản phẩm SKU.', 'warning');
@@ -2230,12 +2238,13 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       const prodId = `prod_${Date.now()}`;
-      const newProduct = { brand, sku };
+      const newProduct = { brand, sku, price };
 
       if (useFirebase) {
         db.collection('products').doc(prodId).set(newProduct).then(() => {
           newProductBrandInput.value = '';
           newProductSkuInput.value = '';
+          if (newProductPriceInput) newProductPriceInput.value = '';
           showToast('Đã thêm', 'Thêm sản phẩm thành công.', 'success');
         }).catch(err => {
           console.error("Firestore product add error:", err);
@@ -2247,6 +2256,7 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('diageo_products', JSON.stringify(allProducts));
         newProductBrandInput.value = '';
         newProductSkuInput.value = '';
+        if (newProductPriceInput) newProductPriceInput.value = '';
         renderProductsCrudList();
         renderPsProductGrid();
         showToast('Đã thêm', 'Thêm sản phẩm thành công.', 'success');
@@ -2264,6 +2274,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnSaveEditProduct.addEventListener('click', () => {
       const brand = editProductBrandInput.value.trim();
       const sku = editProductSkuInput.value.trim();
+      const price = editProductPriceInput ? editProductPriceInput.value.trim() : '';
       const idx = parseInt(editProductIndex.value);
       const prod = allProducts[idx];
 
@@ -2279,7 +2290,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (useFirebase) {
-        db.collection('products').doc(prod.id).update({ brand, sku }).then(() => {
+        db.collection('products').doc(prod.id).update({ brand, sku, price }).then(() => {
           editProductModal.style.display = 'none';
           showToast('Đã cập nhật', 'Cập nhật sản phẩm thành công.', 'success');
         }).catch(err => {
@@ -2289,6 +2300,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         allProducts[idx].brand = brand;
         allProducts[idx].sku = sku;
+        allProducts[idx].price = price;
         localStorage.setItem('diageo_products', JSON.stringify(allProducts));
         editProductModal.style.display = 'none';
         renderProductsCrudList();
@@ -2539,6 +2551,71 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     return Promise.resolve({ success: false, originalSrc: imgSrc });
+  }
+
+  // Excel XLSX Export for Products Catalog
+  if (btnExportProductsExcel) {
+    btnExportProductsExcel.addEventListener('click', async () => {
+      if (!allProducts || allProducts.length === 0) {
+        showToast('Không có dữ liệu', 'Danh mục sản phẩm đang trống.', 'warning');
+        return;
+      }
+
+      showToast('Đang tạo file', 'Vui lòng đợi trong giây lát...', 'info');
+
+      try {
+        const workbook = new ExcelJS.Workbook();
+        workbook.creator = 'Diageo VN';
+        workbook.created = new Date();
+        const worksheet = workbook.addWorksheet('Products Catalog');
+
+        worksheet.columns = [
+          { header: 'Nhóm Brand', key: 'brand', width: 25 },
+          { header: 'Tên sản phẩm (SKU)', key: 'sku', width: 35 },
+          { header: 'Giá (VND)', key: 'price', width: 20 }
+        ];
+
+        worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F81BD' } };
+        worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+
+        // Group and sort by Brand then SKU
+        const grouped = {};
+        allProducts.forEach(prod => {
+          if (!grouped[prod.brand]) grouped[prod.brand] = [];
+          grouped[prod.brand].push(prod);
+        });
+
+        Object.keys(grouped).sort().forEach(brand => {
+          const prods = grouped[brand].sort((a,b) => a.sku.localeCompare(b.sku));
+          prods.forEach(prod => {
+            const rowData = {
+              brand: prod.brand,
+              sku: prod.sku,
+              price: prod.price ? Number(prod.price) : ''
+            };
+            const row = worksheet.addRow(rowData);
+            row.getCell('price').numFmt = '#,##0'; // format number with commas
+            row.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+          });
+        });
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Danh_Muc_San_Pham_${new Date().getTime()}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+        showToast('Thành công', 'Đã tải xuống danh mục sản phẩm.', 'success');
+      } catch (err) {
+        console.error('Lỗi khi xuất Excel Products:', err);
+        showToast('Lỗi', 'Không thể tạo file Excel.', 'error');
+      }
+    });
   }
 
   // Excel XLSX Export with Images using ExcelJS
