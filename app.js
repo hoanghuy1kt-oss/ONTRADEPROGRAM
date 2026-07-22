@@ -1254,6 +1254,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnAddProduct = document.getElementById('btnAddProduct');
   const adminProductSearch = document.getElementById('adminProductSearch');
   const btnExportProductsExcel = document.getElementById('btnExportProductsExcel');
+  const btnImportProductsExcel = document.getElementById('btnImportProductsExcel');
+  const importProductsExcel = document.getElementById('importProductsExcel');
   const productCrudList = document.getElementById('productCrudList');
 
   const editProductModal = document.getElementById('editProductModal');
@@ -2666,6 +2668,92 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch (err) {
         console.error('Lỗi khi xuất Excel Products:', err);
         showToast('Lỗi', 'Không thể tạo file Excel.', 'error');
+      }
+    });
+  }
+
+  // Handle Import Products Excel
+  if (btnImportProductsExcel && importProductsExcel) {
+    btnImportProductsExcel.addEventListener('click', () => {
+      importProductsExcel.click();
+    });
+
+    importProductsExcel.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      showToast('Đang xử lý', 'Đang đọc dữ liệu từ file Excel...', 'info');
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(arrayBuffer);
+        const worksheet = workbook.worksheets[0]; // read first sheet
+        
+        let newCount = 0;
+        let updateCount = 0;
+        const updates = []; // To hold all new and updated products for local fallback
+        const batch = useFirebase ? db.batch() : null;
+
+        worksheet.eachRow((row, rowNumber) => {
+          // Skip the first few rows (title, date, empty, header)
+          // Our header is at row 4, so data starts at row 5 in exported files
+          // Let's make it flexible by detecting Brand and SKU
+          const brandCell = row.getCell(1).text ? row.getCell(1).text.trim() : '';
+          const skuCell = row.getCell(2).text ? row.getCell(2).text.trim() : '';
+          const priceCell = row.getCell(3).value; 
+          
+          let price = '';
+          if (priceCell !== null && priceCell !== undefined) {
+             price = priceCell.toString().trim();
+          }
+
+          if (!brandCell || !skuCell) return; // skip empty or invalid rows
+          if (brandCell.toLowerCase() === 'nhóm brand' && skuCell.toLowerCase() === 'tên sản phẩm (sku)') return; // skip header
+          if (brandCell === 'DANH MỤC SẢN PHẨM DIAGEO') return; // skip main title
+
+          // Check if SKU exists
+          const existingProdIndex = allProducts.findIndex(p => p.sku.toLowerCase() === skuCell.toLowerCase());
+          
+          if (existingProdIndex >= 0) {
+            // Update
+            const existingProd = allProducts[existingProdIndex];
+            existingProd.brand = brandCell; // update brand if needed
+            existingProd.price = price;
+            updateCount++;
+
+            if (useFirebase) {
+              const docRef = db.collection('products').doc(existingProd.id);
+              batch.update(docRef, { brand: brandCell, price: price });
+            }
+          } else {
+            // Add new
+            const prodId = `prod_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            const newProd = { id: prodId, brand: brandCell, sku: skuCell, price: price };
+            allProducts.push(newProd);
+            newCount++;
+
+            if (useFirebase) {
+              const docRef = db.collection('products').doc(prodId);
+              batch.set(docRef, { brand: brandCell, sku: skuCell, price: price });
+            }
+          }
+        });
+
+        if (useFirebase && batch) {
+          await batch.commit();
+        } else {
+          localStorage.setItem('diageo_products', JSON.stringify(allProducts));
+        }
+
+        renderProductsCrudList();
+        renderPsProductGrid();
+        showToast('Thành công', `Đã nhập: ${newCount} mới, cập nhật: ${updateCount} sản phẩm.`, 'success');
+
+      } catch (error) {
+        console.error("Lỗi khi nhập Excel:", error);
+        showToast('Lỗi', 'Có lỗi xảy ra khi đọc file Excel. Vui lòng kiểm tra lại định dạng.', 'error');
+      } finally {
+        importProductsExcel.value = ''; // Reset input so same file can be selected again
       }
     });
   }
