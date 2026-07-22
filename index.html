@@ -891,7 +891,12 @@
             </div>
             
             <div style="background: #ffffff; border: 1px solid var(--border-glass); border-radius: 8px; padding: 15px;">
-              <h5 style="margin-top: 0; margin-bottom: 15px; font-size: 0.9rem;">Bảng Xếp Hạng PG (Leaderboard)</h5>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h5 style="margin: 0; font-size: 0.9rem;">Bảng Xếp Hạng PG (Leaderboard)</h5>
+                <select id="leaderboardMonthFilter" class="input-control" style="padding: 4px 8px; font-size: 0.8rem; width: 160px; height: 30px;">
+                  <option value="">Tất cả các tháng</option>
+                </select>
+              </div>
               <div style="overflow-x: auto;">
                 <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left;">
                   <thead>

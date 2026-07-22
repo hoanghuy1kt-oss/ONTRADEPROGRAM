@@ -4279,6 +4279,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
   
+  const leaderboardMonthFilter = document.getElementById('leaderboardMonthFilter');
+  if (leaderboardMonthFilter) {
+    leaderboardMonthFilter.addEventListener('change', renderDashboard);
+  }
+  
   if (dashboardOutletFilter) {
     dashboardOutletFilter.addEventListener('change', renderDashboard);
   }
@@ -4296,6 +4301,29 @@ document.addEventListener('DOMContentLoaded', () => {
     dashboardOutletFilter.value = current;
   }
 
+  function updateLeaderboardMonthFilter() {
+    if (!leaderboardMonthFilter) return;
+    const current = leaderboardMonthFilter.value;
+    leaderboardMonthFilter.innerHTML = '<option value="">Tất cả các tháng</option>';
+    
+    const monthsSet = new Set();
+    reports.forEach(r => {
+      if (r.reportDate) monthsSet.add(r.reportDate.substring(0, 7));
+    });
+    allTargets.forEach(t => {
+      if (t.month) monthsSet.add(t.month);
+    });
+    
+    const sortedMonths = Array.from(monthsSet).sort().reverse();
+    sortedMonths.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m;
+      opt.textContent = m;
+      leaderboardMonthFilter.appendChild(opt);
+    });
+    leaderboardMonthFilter.value = current;
+  }
+
   function renderDashboard() {
     if (!document.getElementById('tab-dashboard') || !document.getElementById('tab-dashboard').classList.contains('active')) return;
     
@@ -4303,17 +4331,27 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dashboardOutletFilter && dashboardOutletFilter.options.length <= 1) {
        updateDashboardOutletFilter();
     }
+    if (leaderboardMonthFilter && leaderboardMonthFilter.options.length <= 1) {
+       updateLeaderboardMonthFilter();
+    }
     
     const filterOutlet = dashboardOutletFilter ? dashboardOutletFilter.value : '';
+    const filterMonth = leaderboardMonthFilter ? leaderboardMonthFilter.value : '';
     
     let monthReports = reports;
     if (filterOutlet) {
       monthReports = monthReports.filter(r => r.outletName === filterOutlet);
     }
+    if (filterMonth) {
+      monthReports = monthReports.filter(r => r.reportDate && r.reportDate.startsWith(filterMonth));
+    }
 
     let monthTargets = allTargets;
     if (filterOutlet) {
       monthTargets = monthTargets.filter(t => t.outlet === filterOutlet);
+    }
+    if (filterMonth) {
+      monthTargets = monthTargets.filter(t => t.month === filterMonth);
     }
 
     const pgStats = {};
