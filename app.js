@@ -3867,8 +3867,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const targetPG = document.getElementById('targetPG');
   const targetAmount = document.getElementById('targetAmount');
   const btnSaveTarget = document.getElementById('btnSaveTarget');
-  const filterTargetMonth = document.getElementById('filterTargetMonth');
+  
   const targetCrudList = document.getElementById('targetCrudList');
+  const btnExportTargetExcel = document.getElementById('btnExportTargetExcel');
+  const btnImportTargetExcel = document.getElementById('btnImportTargetExcel');
+  const importTargetExcelInput = document.getElementById('importTargetExcelInput');
+
+  if (targetAmount) targetAmount.addEventListener('input', formatCurrencyInput);
 
   function updateTargetDropdowns() {
     if (!targetOutlet) return;
@@ -3951,32 +3956,202 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  if (filterTargetMonth) {
-    filterTargetMonth.addEventListener('change', renderTargetCrudList);
-    const today = new Date();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const yyyy = today.getFullYear();
-    filterTargetMonth.value = `${yyyy}-${mm}`;
-    if (targetMonth) targetMonth.value = `${yyyy}-${mm}`;
+  // Initialize target default month
+  const today = new Date();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const yyyy = today.getFullYear();
+  if (targetMonth) targetMonth.value = `${yyyy}-${mm}`;
+
+  // Export Target Excel Template
+  if (btnExportTargetExcel) {
+    btnExportTargetExcel.addEventListener('click', async () => {
+      showToast('Đang tạo file', 'Vui lòng chờ...', 'info');
+      try {
+        const workbook = new ExcelJS.Workbook();
+        
+        // Sheet 1: Template
+        const sheet1 = workbook.addWorksheet('Nhap_Chi_Tieu');
+        sheet1.columns = [
+          { header: 'Tháng (YYYY-MM)', key: 'month', width: 20 },
+          { header: 'Tên Outlet', key: 'outlet', width: 35 },
+          { header: 'Tên PG', key: 'pg', width: 25 },
+          { header: 'Chỉ Tiêu (VNĐ)', key: 'amount', width: 25 }
+        ];
+        
+        sheet1.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        sheet1.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF7C3AED' } };
+
+        // Pre-fill next month as example
+        let nextMM = today.getMonth() + 2;
+        let nextYYYY = yyyy;
+        if (nextMM > 12) { nextMM = 1; nextYYYY++; }
+        const exMonth = `${nextYYYY}-${String(nextMM).padStart(2, '0')}`;
+        
+        sheet1.addRow({ month: exMonth, outlet: 'The ATM Bar', pg: 'Nguyen Van A', amount: 50000000 });
+
+        // Sheet 2: PG Data reference
+        const sheet2 = workbook.addWorksheet('Danh_Sach_PG');
+        sheet2.columns = [
+          { header: 'Tên Outlet', key: 'outlet', width: 35 },
+          { header: 'Tên PG', key: 'pg', width: 25 }
+        ];
+        sheet2.getRow(1).font = { bold: true };
+        
+        allPrograms.forEach(prog => {
+          if (prog.psNames && Array.isArray(prog.psNames)) {
+            prog.psNames.forEach(pgName => {
+              sheet2.addRow({ outlet: prog.outlet, pg: pgName });
+            });
+          }
+        });
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Template_Chi_Tieu_PG_${Date.now()}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } catch (err) {
+        console.error('Export target excel error:', err);
+        showToast('Lỗi', 'Không thể tạo file template Excel.', 'error');
+      }
+    });
+  }
+
+  // Import Target Excel
+  if (btnImportTargetExcel) {
+    btnImportTargetExcel.addEventListener('click', () => {
+      importTargetExcelInput.click();
+    });
+  }
+
+  if (importTargetExcelInput) {
+    importTargetExcelInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      showToast('Đang xử lý', 'Đang đọc dữ liệu từ file Excel...', 'info');
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(arrayBuffer);
+        const worksheet = workbook.worksheets[0]; // First sheet
+
+        const newTargets = [];
+        
+        worksheet.eachRow((row, rowNumber) => {
+          if (rowNumber === 1) return; // skip header
+          
+          let monthCell = row.getCell(1).value;
+          const outletCell = row.getCell(2).text ? row.getCell(2).text.trim() : '';
+          const pgCell = row.getCell(3).text ? row.getCell(3).text.trim() : '';
+          const amountCell = row.getCell(4).value;
+
+          if (!monthCell || !outletCell || !pgCell) return;
+          
+          let monthStr = '';
+          if (typeof monthCell === 'object' && monthCell instanceof Date) {
+             const m = String(monthCell.getMonth() + 1).padStart(2, '0');
+             const y = monthCell.getFullYear();
+             monthStr = `${y}-${m}`;
+          } else {
+             monthStr = monthCell.toString().trim();
+          }
+
+          let amount = 0;
+          if (amountCell !== null && amountCell !== undefined) {
+             let rawVal = amountCell;
+             if (typeof amountCell === 'object' && amountCell.result !== undefined) {
+               rawVal = amountCell.result;
+             }
+             amount = parseFloat(rawVal);
+          }
+
+          if (isNaN(amount) || amount < 0) amount = 0;
+
+          newTargets.push({
+            month: monthStr,
+            outlet: outletCell,
+            pg: pgCell,
+            amount: amount
+          });
+        });
+
+        if (newTargets.length === 0) {
+          showToast('Lỗi', 'Không tìm thấy dữ liệu hợp lệ trong file.', 'warning');
+          e.target.value = '';
+          return;
+        }
+
+        if (useFirebase) {
+          const batch = db.batch();
+          const targetRef = db.collection('pg_targets');
+          
+          // To overwrite, we should ideally query and delete existing targets for same PG + Month.
+          // For simplicity, we just add them and use custom ID logic, or delete old ones first.
+          for (const nt of newTargets) {
+            // Find existing target for same PG + Month
+            const existing = allTargets.find(t => t.pg === nt.pg && t.month === nt.month);
+            if (existing) {
+               batch.update(targetRef.doc(existing.id), { outlet: nt.outlet, amount: nt.amount });
+            } else {
+               const newId = `target_${Date.now()}_${Math.floor(Math.random()*1000)}`;
+               nt.id = newId;
+               batch.set(targetRef.doc(newId), nt);
+            }
+          }
+          await batch.commit();
+          showToast('Thành công', `Đã nhập ${newTargets.length} chỉ tiêu.`, 'success');
+        } else {
+          for (const nt of newTargets) {
+            const existingIdx = allTargets.findIndex(t => t.pg === nt.pg && t.month === nt.month);
+            if (existingIdx !== -1) {
+              allTargets[existingIdx].outlet = nt.outlet;
+              allTargets[existingIdx].amount = nt.amount;
+            } else {
+              nt.id = `target_${Date.now()}_${Math.floor(Math.random()*1000)}`;
+              allTargets.push(nt);
+            }
+          }
+          localStorage.setItem('diageo_targets', JSON.stringify(allTargets));
+          renderTargetCrudList();
+          showToast('Thành công', `Đã nhập ${newTargets.length} chỉ tiêu.`, 'success');
+        }
+
+        e.target.value = '';
+
+      } catch (error) {
+        console.error("Lỗi khi import target:", error);
+        showToast('Lỗi', 'Có lỗi xảy ra khi đọc file Excel.', 'error');
+        e.target.value = '';
+      }
+    });
   }
 
   function renderTargetCrudList() {
     if (!targetCrudList) return;
-    const filterMonth = filterTargetMonth ? filterTargetMonth.value : '';
-    let filtered = allTargets;
-    if (filterMonth) {
-      filtered = filtered.filter(t => t.month === filterMonth);
-    }
     
-    filtered.sort((a, b) => a.outlet.localeCompare(b.outlet) || a.pg.localeCompare(b.pg));
+    // Default sort by month (newest first) then by outlet then by PG
+    let sorted = [...allTargets];
+    sorted.sort((a, b) => {
+      const mDiff = b.month.localeCompare(a.month);
+      if (mDiff !== 0) return mDiff;
+      const oDiff = a.outlet.localeCompare(b.outlet);
+      if (oDiff !== 0) return oDiff;
+      return a.pg.localeCompare(b.pg);
+    });
 
     targetCrudList.innerHTML = '';
-    if (filtered.length === 0) {
+    if (sorted.length === 0) {
       targetCrudList.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary);">Chưa có chỉ tiêu nào được thiết lập.</div>';
       return;
     }
 
-    filtered.forEach(t => {
+    sorted.forEach(t => {
       const item = document.createElement('div');
       item.style.padding = '12px 15px';
       item.style.borderBottom = '1px solid var(--border-glass)';

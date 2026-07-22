@@ -831,10 +831,16 @@
             </div>
           </div>
 
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
             <h4 style="font-size: 0.95rem; margin: 0;">Danh Sách Chỉ Tiêu Đã Giao</h4>
-            <div style="display: flex; gap: 10px;">
-              <input type="month" id="filterTargetMonth" class="input-control" style="padding: 6px 10px; font-size: 0.8rem; width: 140px;">
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="btn btn-secondary" id="btnExportTargetExcel" style="padding: 6px 12px; font-size: 0.8rem;">
+                <i class="fa-solid fa-file-export"></i> Xuất Mẫu Target
+              </button>
+              <button type="button" class="btn btn-secondary" id="btnImportTargetExcel" style="padding: 6px 12px; font-size: 0.8rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none;">
+                <i class="fa-solid fa-file-import"></i> Nhập Target
+              </button>
+              <input type="file" id="importTargetExcelInput" accept=".xlsx, .xls" style="display: none;">
             </div>
           </div>
           
