@@ -877,7 +877,14 @@
 
           <div style="display: grid; grid-template-columns: 1fr; gap: 20px;">
             <div style="background: #ffffff; border: 1px solid var(--border-glass); border-radius: 8px; padding: 15px;">
-              <h5 style="margin-top: 0; margin-bottom: 15px; font-size: 0.9rem;">Biểu Đồ Doanh Thu Theo Tháng</h5>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h5 style="margin: 0; font-size: 0.9rem;" id="revenueChartTitle">Biểu Đồ Doanh Thu Theo Tháng</h5>
+                <select id="chartTimeScaleFilter" class="input-control" style="padding: 4px 8px; font-size: 0.8rem; width: 120px; height: 30px;">
+                  <option value="month">Theo Tháng</option>
+                  <option value="week">Theo Tuần</option>
+                  <option value="day">Theo Ngày</option>
+                </select>
+              </div>
               <div style="position: relative; height: 250px; width: 100%;">
                 <canvas id="revenueChart"></canvas>
               </div>

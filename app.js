@@ -4266,12 +4266,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const dashboardLeaderboard = document.getElementById('dashboardLeaderboard');
   let revenueChartInstance = null;
 
-  if (dashboardMonth) {
-    const today = new Date();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const yyyy = today.getFullYear();
-    dashboardMonth.value = `${yyyy}-${mm}`;
-    dashboardMonth.addEventListener('change', renderDashboard);
+  const chartTimeScaleFilter = document.getElementById('chartTimeScaleFilter');
+  if (chartTimeScaleFilter) {
+    chartTimeScaleFilter.addEventListener('change', () => {
+      const title = document.getElementById('revenueChartTitle');
+      if (title) {
+        if (chartTimeScaleFilter.value === 'month') title.textContent = 'Biểu Đồ Doanh Thu Theo Tháng';
+        else if (chartTimeScaleFilter.value === 'week') title.textContent = 'Biểu Đồ Doanh Thu Theo Tuần';
+        else if (chartTimeScaleFilter.value === 'day') title.textContent = 'Biểu Đồ Doanh Thu Theo Ngày';
+      }
+      renderChart();
+    });
   }
   
   if (dashboardOutletFilter) {
@@ -4397,30 +4402,98 @@ document.addEventListener('DOMContentLoaded', () => {
     const labels = [];
     const actualData = [];
     
+    const scale = document.getElementById('chartTimeScaleFilter') ? document.getElementById('chartTimeScaleFilter').value : 'month';
+    const filterOutlet = dashboardOutletFilter ? dashboardOutletFilter.value : '';
+
     const today = new Date();
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const yyyy = d.getFullYear();
-      const monthStr = `${yyyy}-${mm}`;
-      labels.push(monthStr);
+    today.setHours(0,0,0,0);
+
+    if (scale === 'month') {
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const yyyy = d.getFullYear();
+        const monthStr = `${yyyy}-${mm}`;
+        labels.push(monthStr);
+        
+        let mReports = reports.filter(r => r.reportDate && r.reportDate.startsWith(monthStr));
+        if (filterOutlet) mReports = mReports.filter(r => r.outletName === filterOutlet);
+        
+        let mActual = 0;
+        mReports.forEach(r => {
+          if (r.companyProductSales) {
+            Object.keys(r.companyProductSales).forEach(sku => {
+              const qty = parseInt(r.companyProductSales[sku]) || 0;
+              const prod = allProducts.find(p => p.sku === sku);
+              const price = prod && prod.price ? parseFloat(prod.price) : 0;
+              mActual += (qty * price);
+            });
+          }
+        });
+        actualData.push(mActual);
+      }
+    } else if (scale === 'week') {
+      const dayOfWeek = today.getDay();
+      const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); 
+      const currentMonday = new Date(today.setDate(diff));
       
-      const filterOutlet = dashboardOutletFilter ? dashboardOutletFilter.value : '';
-      let mReports = reports.filter(r => r.reportDate && r.reportDate.startsWith(monthStr));
-      if (filterOutlet) mReports = mReports.filter(r => r.outletName === filterOutlet);
-      
-      let mActual = 0;
-      mReports.forEach(r => {
-        if (r.companyProductSales) {
-          Object.keys(r.companyProductSales).forEach(sku => {
-            const qty = parseInt(r.companyProductSales[sku]) || 0;
-            const prod = allProducts.find(p => p.sku === sku);
-            const price = prod && prod.price ? parseFloat(prod.price) : 0;
-            mActual += (qty * price);
-          });
-        }
-      });
-      actualData.push(mActual);
+      for (let i = 5; i >= 0; i--) {
+        const weekStart = new Date(currentMonday);
+        weekStart.setDate(currentMonday.getDate() - (i * 7));
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+        
+        const wsStr = `${String(weekStart.getDate()).padStart(2, '0')}/${String(weekStart.getMonth()+1).padStart(2, '0')}`;
+        const weStr = `${String(weekEnd.getDate()).padStart(2, '0')}/${String(weekEnd.getMonth()+1).padStart(2, '0')}`;
+        labels.push(`${wsStr} - ${weStr}`);
+        
+        let wReports = reports.filter(r => {
+          if (!r.reportDate) return false;
+          const rd = new Date(r.reportDate);
+          return rd >= weekStart && rd <= weekEnd;
+        });
+        if (filterOutlet) wReports = wReports.filter(r => r.outletName === filterOutlet);
+        
+        let wActual = 0;
+        wReports.forEach(r => {
+          if (r.companyProductSales) {
+            Object.keys(r.companyProductSales).forEach(sku => {
+              const qty = parseInt(r.companyProductSales[sku]) || 0;
+              const prod = allProducts.find(p => p.sku === sku);
+              const price = prod && prod.price ? parseFloat(prod.price) : 0;
+              wActual += (qty * price);
+            });
+          }
+        });
+        actualData.push(wActual);
+      }
+    } else if (scale === 'day') {
+      const currentDay = new Date();
+      for (let i = 13; i >= 0; i--) {
+        const d = new Date(currentDay);
+        d.setDate(currentDay.getDate() - i);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        const dayStr = `${yyyy}-${mm}-${dd}`;
+        labels.push(`${dd}/${mm}`);
+        
+        let dReports = reports.filter(r => r.reportDate && r.reportDate === dayStr);
+        if (filterOutlet) dReports = dReports.filter(r => r.outletName === filterOutlet);
+        
+        let dActual = 0;
+        dReports.forEach(r => {
+          if (r.companyProductSales) {
+            Object.keys(r.companyProductSales).forEach(sku => {
+              const qty = parseInt(r.companyProductSales[sku]) || 0;
+              const prod = allProducts.find(p => p.sku === sku);
+              const price = prod && prod.price ? parseFloat(prod.price) : 0;
+              dActual += (qty * price);
+            });
+          }
+        });
+        actualData.push(dActual);
+      }
     }
 
     if (revenueChartInstance) {
