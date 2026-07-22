@@ -2236,7 +2236,13 @@ document.addEventListener('DOMContentLoaded', () => {
         item.querySelector('.btn-product-edit').addEventListener('click', () => {
           editProductBrandInput.value = prod.brand;
           editProductSkuInput.value = prod.sku;
-          if (editProductPriceInput) editProductPriceInput.value = prod.price || '';
+          if (editProductPriceInput) {
+            if (prod.price && !isNaN(Number(prod.price))) {
+              editProductPriceInput.value = Math.round(Number(prod.price));
+            } else {
+              editProductPriceInput.value = prod.price || '';
+            }
+          }
           editProductIndex.value = overallIdx;
           editProductModal.style.display = 'flex';
           editProductBrandInput.focus();
@@ -2751,7 +2757,17 @@ document.addEventListener('DOMContentLoaded', () => {
           
           let price = '';
           if (priceCell !== null && priceCell !== undefined) {
-             price = priceCell.toString().trim();
+             // Handle if priceCell is an object (formula result) or string/number
+             let rawVal = priceCell;
+             if (typeof priceCell === 'object' && priceCell.result !== undefined) {
+               rawVal = priceCell.result;
+             }
+             let numVal = Number(rawVal);
+             if (!isNaN(numVal)) {
+               price = Math.round(numVal).toString();
+             } else {
+               price = rawVal.toString().trim();
+             }
           }
 
           if (!brandCell || !skuCell) return;
