@@ -3055,6 +3055,8 @@ document.addEventListener('DOMContentLoaded', () => {
         { header: 'Khách rượu đối thủ', key: 'competitorCustCount', width: 22 },
         { header: 'Sản phẩm rượu công ty', key: 'sku', width: 35 },
         { header: 'Số lượng bán (chai)', key: 'qty', width: 22 },
+        { header: 'Giá (VNĐ)', key: 'price', width: 20 },
+        { header: 'Doanh số (VNĐ)', key: 'revenue', width: 22 },
         { header: 'Thời gian gửi', key: 'timestamp', width: 22 }
       ];
       wsPs.columns = psColumns;
@@ -3077,6 +3079,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const salesMap = report.companyProductSales || {};
         Object.keys(salesMap).forEach((sku) => {
           const qty = salesMap[sku];
+          const product = allProducts.find(p => p.sku === sku);
+          const price = product && product.price ? parseFloat(product.price) : 0;
+          const revenue = price * qty;
+
           const row = wsPs.addRow({
             reportDate: report.reportDate ? formatDate(report.reportDate) : '-',
             outletName: report.outletName || '-',
@@ -3087,6 +3093,8 @@ document.addEventListener('DOMContentLoaded', () => {
             competitorCustCount: report.competitorCustCount || 0,
             sku: sku,
             qty: qty,
+            price: price,
+            revenue: revenue,
             timestamp: new Date(report.timestamp).toLocaleString('vi-VN')
           });
 
@@ -3094,8 +3102,14 @@ document.addEventListener('DOMContentLoaded', () => {
           for (let colNum = 1; colNum <= psColumns.length; colNum++) {
             const cell = row.getCell(colNum);
             cell.font = { name: 'Segoe UI', size: 10, color: { argb: '1E293B' } };
-            const isCenter = colNum === 1 || colNum === 5 || colNum === 6 || colNum === 7 || colNum === 9 || colNum === 10;
-            cell.alignment = { vertical: 'middle', horizontal: isCenter ? 'center' : 'left', wrapText: true };
+            const isCenter = [1, 5, 6, 7, 9, 12].includes(colNum);
+            const isRight = [10, 11].includes(colNum);
+            cell.alignment = { vertical: 'middle', horizontal: isRight ? 'right' : (isCenter ? 'center' : 'left'), wrapText: true };
+            
+            if (isRight) {
+              cell.numFmt = '#,##0';
+            }
+
             cell.border = {
               top: { style: 'thin', color: { argb: 'F1F5F9' } },
               left: { style: 'thin', color: { argb: 'E2E8F0' } },
