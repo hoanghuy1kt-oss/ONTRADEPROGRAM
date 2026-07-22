@@ -119,14 +119,23 @@ document.addEventListener('DOMContentLoaded', () => {
     if (useFirebase) {
       db.collection('products').onSnapshot((snapshot) => {
         allProducts = [];
+        const seen = new Set();
         snapshot.forEach((doc) => {
           const data = doc.data();
           if (data.brand && data.sku) {
-            allProducts.push({
-              id: doc.id,
-              brand: data.brand,
-              sku: data.sku
-            });
+            const skuLower = data.sku.toLowerCase();
+            if (!seen.has(skuLower)) {
+              seen.add(skuLower);
+              allProducts.push({
+                id: doc.id,
+                brand: data.brand,
+                sku: data.sku,
+                price: data.price || ''
+              });
+            } else {
+              // Delete duplicate from Firestore to clean up database
+              db.collection('products').doc(doc.id).delete().catch(console.error);
+            }
           }
         });
         
@@ -150,7 +159,23 @@ document.addEventListener('DOMContentLoaded', () => {
       const stored = localStorage.getItem('diageo_products');
       if (stored) {
         const temp = JSON.parse(stored);
-        allProducts = temp.filter(p => p && p.brand && p.sku);
+        const seen = new Set();
+        allProducts = [];
+        temp.forEach(p => {
+          if (p && p.brand && p.sku) {
+            const skuLower = p.sku.toLowerCase();
+            if (!seen.has(skuLower)) {
+              seen.add(skuLower);
+              allProducts.push({
+                id: p.id,
+                brand: p.brand,
+                sku: p.sku,
+                price: p.price || ''
+              });
+            }
+          }
+        });
+        localStorage.setItem('diageo_products', JSON.stringify(allProducts));
         if (allProducts.length === 0) {
           seedProducts();
         } else {
