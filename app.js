@@ -4394,11 +4394,17 @@ document.addEventListener('DOMContentLoaded', () => {
     leaderboardMonthFilter.innerHTML = '<option value="">Tất cả các tháng</option>';
     
     const monthsSet = new Set();
+    const now = new Date();
+    const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
     reports.forEach(r => {
-      if (r.reportDate) monthsSet.add(r.reportDate.substring(0, 7));
+      if (r.reportDate) {
+         const m = r.reportDate.substring(0, 7);
+         if (m <= currentMonthStr) monthsSet.add(m);
+      }
     });
     allTargets.forEach(t => {
-      if (t.month) monthsSet.add(t.month);
+      if (t.month && t.month <= currentMonthStr) monthsSet.add(t.month);
     });
     
     const sortedMonths = Array.from(monthsSet).sort().reverse();
@@ -4425,7 +4431,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const filterOutlet = dashboardOutletFilter ? dashboardOutletFilter.value : '';
     const filterMonth = leaderboardMonthFilter ? leaderboardMonthFilter.value : '';
     
-    let monthReports = reports;
+    const now = new Date();
+    const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    let monthReports = reports.filter(r => {
+      const m = r.reportDate ? r.reportDate.substring(0, 7) : '';
+      return m && m <= currentMonthStr;
+    });
     if (filterOutlet) {
       monthReports = monthReports.filter(r => r.outletName === filterOutlet);
     }
@@ -4433,7 +4445,7 @@ document.addEventListener('DOMContentLoaded', () => {
       monthReports = monthReports.filter(r => r.reportDate && r.reportDate.startsWith(filterMonth));
     }
 
-    let monthTargets = allTargets;
+    let monthTargets = allTargets.filter(t => t.month && t.month <= currentMonthStr);
     if (filterOutlet) {
       monthTargets = monthTargets.filter(t => t.outlet === filterOutlet);
     }
