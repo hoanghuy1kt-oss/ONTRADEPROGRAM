@@ -4299,17 +4299,14 @@ document.addEventListener('DOMContentLoaded', () => {
        updateDashboardOutletFilter();
     }
     
-    const filterMonth = dashboardMonth ? dashboardMonth.value : '';
     const filterOutlet = dashboardOutletFilter ? dashboardOutletFilter.value : '';
     
-    if (!filterMonth) return;
-
-    let monthReports = reports.filter(r => r.reportDate && r.reportDate.startsWith(filterMonth));
+    let monthReports = reports;
     if (filterOutlet) {
       monthReports = monthReports.filter(r => r.outletName === filterOutlet);
     }
 
-    let monthTargets = allTargets.filter(t => t.month === filterMonth);
+    let monthTargets = allTargets;
     if (filterOutlet) {
       monthTargets = monthTargets.filter(t => t.outlet === filterOutlet);
     }
