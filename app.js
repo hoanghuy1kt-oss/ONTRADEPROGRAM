@@ -4150,9 +4150,19 @@ document.addEventListener('DOMContentLoaded', () => {
           if (!monthCell || !outletCell || !pgCell) return;
           
           let monthStr = '';
-          if (typeof monthCell === 'object' && monthCell instanceof Date) {
-             const m = String(monthCell.getMonth() + 1).padStart(2, '0');
-             const y = monthCell.getFullYear();
+          if (typeof monthCell === 'object') {
+             let d = monthCell instanceof Date ? monthCell : (monthCell && monthCell.result instanceof Date ? monthCell.result : null);
+             if (d) {
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const y = d.getFullYear();
+                monthStr = `${y}-${m}`;
+             } else {
+                monthStr = String(monthCell).trim();
+             }
+          } else if (typeof monthCell === 'number' && monthCell > 10000) {
+             const d = new Date(Math.round((monthCell - 25569) * 86400 * 1000));
+             const y = d.getUTCFullYear();
+             const m = String(d.getUTCMonth() + 1).padStart(2, '0');
              monthStr = `${y}-${m}`;
           } else {
              let str = monthCell.toString().trim();
@@ -4163,10 +4173,9 @@ document.addEventListener('DOMContentLoaded', () => {
                  const y = parts[1];
                  monthStr = `${y}-${m}`;
                } else if (parts.length === 3) {
-                 // if DD/MM/YYYY
-                 const m = parts[1].padStart(2, '0');
-                 const y = parts[2];
-                 monthStr = `${y}-${m}`;
+                 let y = parts[2];
+                 let m = parseInt(parts[0]) <= 12 ? parts[0] : parts[1];
+                 monthStr = `${y}-${m.padStart(2, '0')}`;
                }
              } else {
                monthStr = str;
@@ -4178,6 +4187,9 @@ document.addEventListener('DOMContentLoaded', () => {
              let rawVal = amountCell;
              if (typeof amountCell === 'object' && amountCell.result !== undefined) {
                rawVal = amountCell.result;
+             }
+             if (typeof rawVal === 'string') {
+               rawVal = rawVal.replace(/,/g, '');
              }
              amount = parseFloat(rawVal);
           }
