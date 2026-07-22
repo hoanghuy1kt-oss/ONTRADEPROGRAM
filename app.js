@@ -4050,7 +4050,15 @@ document.addEventListener('DOMContentLoaded', () => {
         sheet1.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF7C3AED' } };
 
         if (allTargets && allTargets.length > 0) {
-          allTargets.forEach(t => {
+          const sortedTargets = [...allTargets].sort((a, b) => {
+            const mDiff = b.month.localeCompare(a.month);
+            if (mDiff !== 0) return mDiff;
+            const oDiff = a.outlet.localeCompare(b.outlet);
+            if (oDiff !== 0) return oDiff;
+            return a.pg.localeCompare(b.pg);
+          });
+          
+          sortedTargets.forEach(t => {
             let exMonth = new Date();
             if (t.month && t.month.includes('-')) {
               const parts = t.month.split('-');
