@@ -77,6 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let samplePrograms = [];
   let allProducts = [];
+  let allTargets = [];
 
   function initPrograms() {
     if (useFirebase) {
@@ -236,6 +237,31 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('diageo_reports', JSON.stringify(reports));
       }
       renderReportsTable();
+    }
+  }
+
+  function initTargets() {
+    if (useFirebase) {
+      db.collection('pg_targets').onSnapshot((snapshot) => {
+        allTargets = [];
+        snapshot.forEach((doc) => {
+          allTargets.push({ id: doc.id, ...doc.data() });
+        });
+        if (typeof renderTargetCrudList === 'function') renderTargetCrudList();
+        if (typeof renderDashboard === 'function') renderDashboard();
+      }, (error) => {
+        console.error("Firestore targets sync error:", error);
+      });
+    } else {
+      const stored = localStorage.getItem('diageo_pg_targets');
+      if (stored) {
+        allTargets = JSON.parse(stored);
+      } else {
+        allTargets = [];
+        localStorage.setItem('diageo_pg_targets', JSON.stringify(allTargets));
+      }
+      if (typeof renderTargetCrudList === 'function') renderTargetCrudList();
+      if (typeof renderDashboard === 'function') renderDashboard();
     }
   }
   
@@ -2703,6 +2729,8 @@ document.addEventListener('DOMContentLoaded', () => {
       importProductsExcel.click();
     });
 
+    let pendingExcelProducts = [];
+
     importProductsExcel.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
@@ -2712,17 +2740,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const arrayBuffer = await file.arrayBuffer();
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.load(arrayBuffer);
-        const worksheet = workbook.worksheets[0]; // read first sheet
+        const worksheet = workbook.worksheets[0];
         
-        let newCount = 0;
-        let updateCount = 0;
-        const updates = []; // To hold all new and updated products for local fallback
-        const batch = useFirebase ? db.batch() : null;
+        pendingExcelProducts = [];
 
         worksheet.eachRow((row, rowNumber) => {
-          // Skip the first few rows (title, date, empty, header)
-          // Our header is at row 4, so data starts at row 5 in exported files
-          // Let's make it flexible by detecting Brand and SKU
           const brandCell = row.getCell(1).text ? row.getCell(1).text.trim() : '';
           const skuCell = row.getCell(2).text ? row.getCell(2).text.trim() : '';
           const priceCell = row.getCell(3).value; 
@@ -2732,55 +2754,117 @@ document.addEventListener('DOMContentLoaded', () => {
              price = priceCell.toString().trim();
           }
 
-          if (!brandCell || !skuCell) return; // skip empty or invalid rows
-          if (brandCell.toLowerCase() === 'nhóm brand' && skuCell.toLowerCase() === 'tên sản phẩm (sku)') return; // skip header
-          if (brandCell === 'DANH MỤC SẢN PHẨM DIAGEO') return; // skip main title
+          if (!brandCell || !skuCell) return;
+          if (brandCell.toLowerCase() === 'nhóm brand' && skuCell.toLowerCase() === 'tên sản phẩm (sku)') return;
+          if (brandCell === 'DANH MỤC SẢN PHẨM DIAGEO') return;
 
-          // Check if SKU exists
-          const existingProdIndex = allProducts.findIndex(p => p.sku.toLowerCase() === skuCell.toLowerCase());
+          pendingExcelProducts.push({ brand: brandCell, sku: skuCell, price: price });
+        });
+
+        // Identify missing products
+        const excelSkusLower = new Set(pendingExcelProducts.map(p => p.sku.toLowerCase()));
+        const missingProducts = allProducts.filter(p => !excelSkusLower.has(p.sku.toLowerCase()));
+
+        if (missingProducts.length > 0) {
+          // Show warning modal
+          document.getElementById('excelMissingCount').textContent = missingProducts.length;
+          document.getElementById('excelMissingList').textContent = missingProducts.map(p => p.sku).join('\n');
+          document.getElementById('excelWarningModal').style.display = 'flex';
+        } else {
+          // Process immediately
+          executeExcelSync(pendingExcelProducts, missingProducts);
+        }
+
+      } catch (error) {
+        console.error("Lỗi khi đọc Excel:", error);
+        showToast('Lỗi', 'Có lỗi xảy ra khi đọc file Excel. Vui lòng kiểm tra lại định dạng.', 'error');
+      } finally {
+        importProductsExcel.value = ''; // Reset input
+      }
+    });
+
+    const btnCancelExcelImport = document.getElementById('btnCancelExcelImport');
+    const btnCancelExcelImport2 = document.getElementById('btnCancelExcelImport2');
+    const btnConfirmExcelImport = document.getElementById('btnConfirmExcelImport');
+
+    const closeExcelWarningModal = () => {
+      document.getElementById('excelWarningModal').style.display = 'none';
+      pendingExcelProducts = [];
+    };
+
+    if (btnCancelExcelImport) btnCancelExcelImport.addEventListener('click', closeExcelWarningModal);
+    if (btnCancelExcelImport2) btnCancelExcelImport2.addEventListener('click', closeExcelWarningModal);
+    
+    if (btnConfirmExcelImport) {
+      btnConfirmExcelImport.addEventListener('click', () => {
+        document.getElementById('excelWarningModal').style.display = 'none';
+        const excelSkusLower = new Set(pendingExcelProducts.map(p => p.sku.toLowerCase()));
+        const missingProducts = allProducts.filter(p => !excelSkusLower.has(p.sku.toLowerCase()));
+        executeExcelSync(pendingExcelProducts, missingProducts);
+      });
+    }
+
+    async function executeExcelSync(excelList, missingList) {
+      showToast('Đang xử lý', 'Đang đồng bộ dữ liệu vào hệ thống...', 'info');
+      try {
+        let newCount = 0;
+        let updateCount = 0;
+        let deleteCount = missingList.length;
+        const batch = useFirebase ? db.batch() : null;
+
+        // Process Add/Update
+        excelList.forEach(excelProd => {
+          const existingProdIndex = allProducts.findIndex(p => p.sku.toLowerCase() === excelProd.sku.toLowerCase());
           
           if (existingProdIndex >= 0) {
             // Update
             const existingProd = allProducts[existingProdIndex];
-            existingProd.brand = brandCell; // update brand if needed
-            existingProd.price = price;
+            existingProd.brand = excelProd.brand;
+            existingProd.price = excelProd.price;
             updateCount++;
 
             if (useFirebase) {
               const docRef = db.collection('products').doc(existingProd.id);
-              batch.update(docRef, { brand: brandCell, price: price });
+              batch.update(docRef, { brand: excelProd.brand, price: excelProd.price });
             }
           } else {
             // Add new
             const prodId = `prod_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-            const newProd = { id: prodId, brand: brandCell, sku: skuCell, price: price };
+            const newProd = { id: prodId, brand: excelProd.brand, sku: excelProd.sku, price: excelProd.price };
             allProducts.push(newProd);
             newCount++;
 
             if (useFirebase) {
               const docRef = db.collection('products').doc(prodId);
-              batch.set(docRef, { brand: brandCell, sku: skuCell, price: price });
+              batch.set(docRef, { brand: excelProd.brand, sku: excelProd.sku, price: excelProd.price });
             }
           }
         });
 
-        if (useFirebase && batch) {
+        // Process Deletes
+        if (useFirebase) {
+          missingList.forEach(prod => {
+            const docRef = db.collection('products').doc(prod.id);
+            batch.delete(docRef);
+            // Local state update
+            allProducts = allProducts.filter(p => p.id !== prod.id);
+          });
           await batch.commit();
         } else {
+          const excelSkusLower = new Set(excelList.map(p => p.sku.toLowerCase()));
+          allProducts = allProducts.filter(p => excelSkusLower.has(p.sku.toLowerCase()));
           localStorage.setItem('diageo_products', JSON.stringify(allProducts));
         }
 
         renderProductsCrudList();
         renderPsProductGrid();
-        showToast('Thành công', `Đã nhập: ${newCount} mới, cập nhật: ${updateCount} sản phẩm.`, 'success');
-
-      } catch (error) {
-        console.error("Lỗi khi nhập Excel:", error);
-        showToast('Lỗi', 'Có lỗi xảy ra khi đọc file Excel. Vui lòng kiểm tra lại định dạng.', 'error');
-      } finally {
-        importProductsExcel.value = ''; // Reset input so same file can be selected again
+        showToast('Thành công', `Đã đồng bộ: ${newCount} mới, ${updateCount} cập nhật, ${deleteCount} bị xóa.`, 'success');
+        pendingExcelProducts = [];
+      } catch (err) {
+        console.error("Lỗi đồng bộ Excel:", err);
+        showToast('Lỗi', 'Không thể lưu dữ liệu đồng bộ.', 'error');
       }
-    });
+    }
   }
 
   // Excel XLSX Export with Images using ExcelJS
@@ -3645,6 +3729,54 @@ document.addEventListener('DOMContentLoaded', () => {
           });
         }
 
+        const sumPsTargetFeedback = document.getElementById('sumPsTargetFeedback');
+        if (sumPsTargetFeedback) {
+          const monthStr = `${yyyy}-${mm}`;
+          const currentTarget = allTargets.find(t => t.pg === psNameVal && t.month === monthStr);
+          
+          if (currentTarget && currentTarget.amount > 0) {
+            let totalActual = 0;
+            let reportIds = new Set();
+            reports.forEach(r => {
+              if (r.psName === psNameVal && r.reportDate && r.reportDate.startsWith(monthStr)) {
+                reportIds.add(r.id);
+                if (r.companyProductSales && Array.isArray(r.companyProductSales)) {
+                  r.companyProductSales.forEach(item => {
+                    const prod = allProducts.find(p => p.sku === item.sku);
+                    const price = prod && prod.price ? parseFloat(prod.price) : 0;
+                    const qty = parseInt(item.quantity) || 0;
+                    totalActual += (qty * price);
+                  });
+                }
+              }
+            });
+
+            if (!reportIds.has(reportId)) {
+              if (newPsReport.companyProductSales && Array.isArray(newPsReport.companyProductSales)) {
+                newPsReport.companyProductSales.forEach(item => {
+                  const prod = allProducts.find(p => p.sku === item.sku);
+                  const price = prod && prod.price ? parseFloat(prod.price) : 0;
+                  const qty = parseInt(item.quantity) || 0;
+                  totalActual += (qty * price);
+                });
+              }
+            }
+
+            const ach = (totalActual / currentTarget.amount) * 100;
+            sumPsTargetFeedback.textContent = `Tiến độ tháng: ${new Intl.NumberFormat('vi-VN').format(totalActual)} / ${new Intl.NumberFormat('vi-VN').format(currentTarget.amount)} ₫ (${ach.toFixed(1)}%)`;
+            sumPsTargetFeedback.style.display = 'block';
+            
+            let color = 'var(--text-primary)';
+            if (ach >= 100) color = 'var(--success-color)';
+            else if (ach >= 80) color = '#eab308';
+            else color = 'var(--danger-color)';
+            sumPsTargetFeedback.style.color = color;
+
+          } else {
+            sumPsTargetFeedback.style.display = 'none';
+          }
+        }
+
         if (psFormContainer) psFormContainer.style.display = 'none';
         if (psSuccessScreen) psSuccessScreen.style.display = 'block';
         
@@ -3699,6 +3831,407 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Simple Client-side routing based on Vercel deployment paths
+  // ----------------------------------------------------
+  // X. Targets Logic
+  // ----------------------------------------------------
+  const targetMonth = document.getElementById('targetMonth');
+  const targetOutlet = document.getElementById('targetOutlet');
+  const targetPG = document.getElementById('targetPG');
+  const targetAmount = document.getElementById('targetAmount');
+  const btnSaveTarget = document.getElementById('btnSaveTarget');
+  const filterTargetMonth = document.getElementById('filterTargetMonth');
+  const targetCrudList = document.getElementById('targetCrudList');
+
+  function updateTargetDropdowns() {
+    if (!targetOutlet) return;
+    const currentOutlet = targetOutlet.value;
+    targetOutlet.innerHTML = '<option value="">Chọn Outlet</option>';
+    samplePrograms.forEach(prog => {
+      const opt = document.createElement('option');
+      opt.value = prog.name;
+      opt.textContent = prog.name;
+      targetOutlet.appendChild(opt);
+    });
+    targetOutlet.value = currentOutlet;
+  }
+
+  if (targetOutlet) {
+    targetOutlet.addEventListener('change', () => {
+      if (!targetPG) return;
+      targetPG.innerHTML = '<option value="">Chọn PG</option>';
+      const selectedOutlet = targetOutlet.value;
+      const prog = samplePrograms.find(p => p.name === selectedOutlet);
+      if (prog && prog.psNames) {
+        prog.psNames.forEach(ps => {
+          const opt = document.createElement('option');
+          opt.value = ps;
+          opt.textContent = ps;
+          targetPG.appendChild(opt);
+        });
+      }
+    });
+  }
+
+  if (btnSaveTarget) {
+    btnSaveTarget.addEventListener('click', () => {
+      const month = targetMonth.value;
+      const outlet = targetOutlet.value;
+      const pg = targetPG.value;
+      const amount = parseFloat(targetAmount.value);
+      
+      if (!month || !outlet || !pg || isNaN(amount)) {
+        showToast('Lỗi', 'Vui lòng nhập đầy đủ thông tin chỉ tiêu.', 'error');
+        return;
+      }
+      
+      const targetId = `target_${Date.now()}`;
+      const targetData = {
+        id: targetId,
+        month: month,
+        outlet: outlet,
+        pg: pg,
+        amount: amount,
+        createdAt: new Date().toISOString()
+      };
+
+      if (useFirebase) {
+        const existing = allTargets.find(t => t.pg === pg && t.month === month);
+        if (existing) {
+          db.collection('pg_targets').doc(existing.id).update({ amount: amount }).then(() => {
+             showToast('Thành công', 'Đã cập nhật chỉ tiêu.', 'success');
+             targetAmount.value = '';
+          });
+        } else {
+          db.collection('pg_targets').doc(targetId).set(targetData).then(() => {
+             showToast('Thành công', 'Đã thêm chỉ tiêu mới.', 'success');
+             targetAmount.value = '';
+          });
+        }
+      } else {
+        const existingIdx = allTargets.findIndex(t => t.pg === pg && t.month === month);
+        if (existingIdx >= 0) {
+          allTargets[existingIdx].amount = amount;
+        } else {
+          allTargets.push(targetData);
+        }
+        localStorage.setItem('diageo_pg_targets', JSON.stringify(allTargets));
+        showToast('Thành công', 'Đã lưu chỉ tiêu.', 'success');
+        targetAmount.value = '';
+        renderTargetCrudList();
+        renderDashboard();
+      }
+    });
+  }
+
+  if (filterTargetMonth) {
+    filterTargetMonth.addEventListener('change', renderTargetCrudList);
+    const today = new Date();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const yyyy = today.getFullYear();
+    filterTargetMonth.value = `${yyyy}-${mm}`;
+    if (targetMonth) targetMonth.value = `${yyyy}-${mm}`;
+  }
+
+  function renderTargetCrudList() {
+    if (!targetCrudList) return;
+    const filterMonth = filterTargetMonth ? filterTargetMonth.value : '';
+    let filtered = allTargets;
+    if (filterMonth) {
+      filtered = filtered.filter(t => t.month === filterMonth);
+    }
+    
+    filtered.sort((a, b) => a.outlet.localeCompare(b.outlet) || a.pg.localeCompare(b.pg));
+
+    targetCrudList.innerHTML = '';
+    if (filtered.length === 0) {
+      targetCrudList.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary);">Chưa có chỉ tiêu nào được thiết lập.</div>';
+      return;
+    }
+
+    filtered.forEach(t => {
+      const item = document.createElement('div');
+      item.style.padding = '12px 15px';
+      item.style.borderBottom = '1px solid var(--border-glass)';
+      item.style.display = 'flex';
+      item.style.justifyContent = 'space-between';
+      item.style.alignItems = 'center';
+      
+      const info = document.createElement('div');
+      info.innerHTML = `<div style="font-weight: 600; color: var(--text-primary);">${t.pg}</div>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary);"><i class="fa-solid fa-store" style="font-size: 0.7rem; margin-right: 4px;"></i>${t.outlet}</div>`;
+      
+      const rightSide = document.createElement('div');
+      rightSide.style.display = 'flex';
+      rightSide.style.alignItems = 'center';
+      rightSide.style.gap = '15px';
+      
+      const amt = document.createElement('div');
+      amt.style.fontWeight = '700';
+      amt.style.color = 'var(--primary-color)';
+      amt.textContent = new Intl.NumberFormat('vi-VN').format(t.amount) + ' ₫';
+      
+      const btnDel = document.createElement('button');
+      btnDel.className = 'btn btn-secondary';
+      btnDel.style.padding = '5px 10px';
+      btnDel.style.color = 'var(--danger-color)';
+      btnDel.style.borderColor = 'var(--danger-color)';
+      btnDel.innerHTML = '<i class="fa-regular fa-trash-can"></i>';
+      btnDel.onclick = () => {
+        if (!confirm('Bạn có chắc chắn muốn xóa chỉ tiêu này?')) return;
+        if (useFirebase) {
+          db.collection('pg_targets').doc(t.id).delete().then(() => showToast('Đã xóa', '', 'success'));
+        } else {
+          allTargets = allTargets.filter(x => x.id !== t.id);
+          localStorage.setItem('diageo_pg_targets', JSON.stringify(allTargets));
+          renderTargetCrudList();
+          renderDashboard();
+        }
+      };
+      
+      rightSide.appendChild(amt);
+      rightSide.appendChild(btnDel);
+      
+      item.appendChild(info);
+      item.appendChild(rightSide);
+      targetCrudList.appendChild(item);
+    });
+  }
+
+  const adminTabsX = document.querySelectorAll('.admin-tab');
+  adminTabsX.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const target = tab.dataset.tab;
+      if (target === 'targets') {
+        updateTargetDropdowns();
+        renderTargetCrudList();
+      } else if (target === 'dashboard') {
+        renderDashboard();
+      }
+    });
+  });
+
+  // ----------------------------------------------------
+  // Y. Dashboard Logic
+  // ----------------------------------------------------
+  const dashboardMonth = document.getElementById('dashboardMonth');
+  const dashboardOutletFilter = document.getElementById('dashboardOutletFilter');
+  const dashTotalActual = document.getElementById('dashTotalActual');
+  const dashTotalTarget = document.getElementById('dashTotalTarget');
+  const dashTotalACH = document.getElementById('dashTotalACH');
+  const dashboardLeaderboard = document.getElementById('dashboardLeaderboard');
+  let revenueChartInstance = null;
+
+  if (dashboardMonth) {
+    const today = new Date();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const yyyy = today.getFullYear();
+    dashboardMonth.value = `${yyyy}-${mm}`;
+    dashboardMonth.addEventListener('change', renderDashboard);
+  }
+  
+  if (dashboardOutletFilter) {
+    dashboardOutletFilter.addEventListener('change', renderDashboard);
+  }
+
+  function updateDashboardOutletFilter() {
+    if (!dashboardOutletFilter) return;
+    const current = dashboardOutletFilter.value;
+    dashboardOutletFilter.innerHTML = '<option value="">Tất cả Outlet</option>';
+    samplePrograms.forEach(prog => {
+      const opt = document.createElement('option');
+      opt.value = prog.name;
+      opt.textContent = prog.name;
+      dashboardOutletFilter.appendChild(opt);
+    });
+    dashboardOutletFilter.value = current;
+  }
+
+  function renderDashboard() {
+    if (!document.getElementById('tab-dashboard') || !document.getElementById('tab-dashboard').classList.contains('active')) return;
+    
+    // Only update dropdown if empty
+    if (dashboardOutletFilter && dashboardOutletFilter.options.length <= 1) {
+       updateDashboardOutletFilter();
+    }
+    
+    const filterMonth = dashboardMonth ? dashboardMonth.value : '';
+    const filterOutlet = dashboardOutletFilter ? dashboardOutletFilter.value : '';
+    
+    if (!filterMonth) return;
+
+    let monthReports = reports.filter(r => r.reportDate && r.reportDate.startsWith(filterMonth));
+    if (filterOutlet) {
+      monthReports = monthReports.filter(r => r.programName === filterOutlet);
+    }
+
+    let monthTargets = allTargets.filter(t => t.month === filterMonth);
+    if (filterOutlet) {
+      monthTargets = monthTargets.filter(t => t.outlet === filterOutlet);
+    }
+
+    const pgStats = {};
+    
+    monthTargets.forEach(t => {
+      pgStats[t.pg] = {
+        pg: t.pg,
+        outlet: t.outlet,
+        target: t.amount,
+        actual: 0
+      };
+    });
+
+    monthReports.forEach(r => {
+      const pg = r.psName;
+      if (!pg) return;
+      
+      if (!pgStats[pg]) {
+        pgStats[pg] = {
+          pg: pg,
+          outlet: r.programName,
+          target: 0,
+          actual: 0
+        };
+      }
+      
+      let reportRevenue = 0;
+      if (r.companyProductSales && Array.isArray(r.companyProductSales)) {
+        r.companyProductSales.forEach(item => {
+          const prod = allProducts.find(p => p.sku === item.sku);
+          const price = prod && prod.price ? parseFloat(prod.price) : 0;
+          const qty = parseInt(item.quantity) || 0;
+          reportRevenue += (qty * price);
+        });
+      }
+      pgStats[pg].actual += reportRevenue;
+    });
+
+    const statsArray = Object.values(pgStats);
+    
+    let totalTarget = 0;
+    let totalActual = 0;
+
+    statsArray.forEach(s => {
+      totalTarget += s.target;
+      totalActual += s.actual;
+      s.ach = s.target > 0 ? (s.actual / s.target) * 100 : 0;
+    });
+
+    if (dashTotalActual) dashTotalActual.textContent = new Intl.NumberFormat('vi-VN').format(totalActual) + ' ₫';
+    if (dashTotalTarget) dashTotalTarget.textContent = new Intl.NumberFormat('vi-VN').format(totalTarget) + ' ₫';
+    if (dashTotalACH) dashTotalACH.textContent = totalTarget > 0 ? ((totalActual / totalTarget) * 100).toFixed(1) + '%' : '0%';
+
+    if (dashboardLeaderboard) {
+      dashboardLeaderboard.innerHTML = '';
+      
+      statsArray.sort((a, b) => b.ach - a.ach);
+
+      statsArray.forEach(s => {
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid var(--border-glass)';
+        
+        let achColor = 'var(--text-primary)';
+        if (s.ach >= 100) achColor = 'var(--success-color)';
+        else if (s.ach >= 80) achColor = '#eab308';
+        else if (s.target > 0) achColor = 'var(--danger-color)';
+
+        tr.innerHTML = `
+          <td style="padding: 10px 8px; font-weight: 600;">${s.pg}</td>
+          <td style="padding: 10px 8px; color: var(--text-secondary);">${s.outlet}</td>
+          <td style="padding: 10px 8px; text-align: right;">${new Intl.NumberFormat('vi-VN').format(s.target)}</td>
+          <td style="padding: 10px 8px; text-align: right; font-weight: 600;">${new Intl.NumberFormat('vi-VN').format(s.actual)}</td>
+          <td style="padding: 10px 8px; text-align: right; color: ${achColor}; font-weight: 700;">${s.target > 0 ? s.ach.toFixed(1) + '%' : 'N/A'}</td>
+        `;
+        dashboardLeaderboard.appendChild(tr);
+      });
+    }
+
+    renderChart();
+  }
+
+  function renderChart() {
+    const ctx = document.getElementById('revenueChart');
+    if (!ctx) return;
+    
+    const labels = [];
+    const actualData = [];
+    
+    const today = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const yyyy = d.getFullYear();
+      const monthStr = `${yyyy}-${mm}`;
+      labels.push(monthStr);
+      
+      const filterOutlet = dashboardOutletFilter ? dashboardOutletFilter.value : '';
+      let mReports = reports.filter(r => r.reportDate && r.reportDate.startsWith(monthStr));
+      if (filterOutlet) mReports = mReports.filter(r => r.programName === filterOutlet);
+      
+      let mActual = 0;
+      mReports.forEach(r => {
+        if (r.companyProductSales && Array.isArray(r.companyProductSales)) {
+          r.companyProductSales.forEach(item => {
+            const prod = allProducts.find(p => p.sku === item.sku);
+            const price = prod && prod.price ? parseFloat(prod.price) : 0;
+            const qty = parseInt(item.quantity) || 0;
+            mActual += (qty * price);
+          });
+        }
+      });
+      actualData.push(mActual);
+    }
+
+    if (revenueChartInstance) {
+      revenueChartInstance.destroy();
+    }
+    
+    revenueChartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Doanh Thu Actual (VNĐ)',
+          data: actualData,
+          backgroundColor: 'rgba(147, 51, 234, 0.6)',
+          borderColor: 'rgba(147, 51, 234, 1)',
+          borderWidth: 1,
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                let label = context.dataset.label || '';
+                if (label) label += ': ';
+                if (context.parsed.y !== null) {
+                  label += new Intl.NumberFormat('vi-VN').format(context.parsed.y) + ' ₫';
+                }
+                return label;
+              }
+            }
+          }
+        },
+        scales: {
+          y: { 
+            beginAtZero: true,
+            ticks: {
+              callback: function(value) {
+                if (value >= 1000000) return (value / 1000000) + ' Tr';
+                if (value >= 1000) return (value / 1000) + ' K';
+                return value;
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
   function handleRouting() {
     const path = window.location.pathname.toLowerCase();
     const appContainer = document.querySelector('.app-container');
@@ -3762,5 +4295,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initPrograms();
   initProducts();
   initReports();
+  initTargets();
   handleRouting();
 });
