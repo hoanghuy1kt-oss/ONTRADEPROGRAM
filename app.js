@@ -4049,13 +4049,23 @@ document.addEventListener('DOMContentLoaded', () => {
         sheet1.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
         sheet1.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF7C3AED' } };
 
-        // Pre-fill next month as example
-        let nextMM = today.getMonth() + 2;
-        let nextYYYY = yyyy;
-        if (nextMM > 12) { nextMM = 1; nextYYYY++; }
-        const exMonth = new Date(nextYYYY, nextMM - 1, 1);
-        
-        sheet1.addRow({ month: exMonth, outlet: 'The ATM Bar', pg: 'Nguyen Van A', amount: 50000000 });
+        if (allTargets && allTargets.length > 0) {
+          allTargets.forEach(t => {
+            let exMonth = new Date();
+            if (t.month && t.month.includes('-')) {
+              const parts = t.month.split('-');
+              exMonth = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, 1);
+            }
+            sheet1.addRow({ month: exMonth, outlet: t.outlet, pg: t.pg, amount: t.amount });
+          });
+        } else {
+          // Pre-fill next month as example if no data exists
+          let nextMM = today.getMonth() + 2;
+          let nextYYYY = yyyy;
+          if (nextMM > 12) { nextMM = 1; nextYYYY++; }
+          const exMonth = new Date(nextYYYY, nextMM - 1, 1);
+          sheet1.addRow({ month: exMonth, outlet: 'The ATM Bar', pg: 'Nguyen Van A', amount: 50000000 });
+        }
 
         // Sheet 2: PG Data reference
         const sheet2 = workbook.addWorksheet('Danh_Sach_PG');
