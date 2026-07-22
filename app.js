@@ -1515,6 +1515,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <th>Thời gian</th>
             <th>Loại hình</th>
             <th>Nội dung tóm tắt</th>
+            <th>Doanh số</th>
             <th>Thao tác</th>
           </tr>
         `;
@@ -1555,7 +1556,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (filteredReports.length === 0) {
       if (reportTableBody) {
-        const colSpanCount = reportFilterType === 'PS' ? 7 : 9;
+        const colSpanCount = reportFilterType === 'PS' ? 8 : 9;
         reportTableBody.innerHTML = `
           <tr>
             <td colspan="${colSpanCount}">
@@ -1676,6 +1677,20 @@ document.addEventListener('DOMContentLoaded', () => {
       tr.appendChild(tdTime);
       tr.appendChild(tdTypes);
       tr.appendChild(tdContent);
+      if (reportFilterType === 'PS') {
+        const tdRevenue = document.createElement('td');
+        let totalRevenue = 0;
+        if (report.companyProductSales) {
+          Object.keys(report.companyProductSales).forEach(sku => {
+            const qty = report.companyProductSales[sku];
+            const product = allProducts.find(p => p.sku === sku);
+            const price = product && product.price ? parseFloat(product.price) : 0;
+            totalRevenue += price * qty;
+          });
+        }
+        tdRevenue.innerHTML = `<div style="font-weight: 700; color: var(--primary-color); white-space: nowrap;">${new Intl.NumberFormat('vi-VN').format(totalRevenue)} ₫</div>`;
+        tr.appendChild(tdRevenue);
+      }
       if (reportFilterType !== 'PS') {
         tr.appendChild(tdGallery);
         tr.appendChild(tdGuarantee);
