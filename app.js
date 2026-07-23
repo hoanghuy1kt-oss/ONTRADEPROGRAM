@@ -4180,6 +4180,8 @@ document.addEventListener('DOMContentLoaded', () => {
              monthStr = `${y}-${m}`;
           } else {
              let str = monthCell.toString().trim();
+             // Standardize separators to '/'
+             str = str.replace(/-/g, '/');
              if (str.includes('/')) {
                const parts = str.split('/');
                if (parts.length === 2) {
@@ -4246,6 +4248,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
           await batch.commit();
           showToast('Thành công', `Đã nhập ${newTargets.length} chỉ tiêu.`, 'success');
+          setTimeout(() => window.location.reload(), 1000);
         } else {
           for (const nt of newTargets) {
             const existingIdx = allTargets.findIndex(t => 
@@ -4440,19 +4443,15 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderDashboard() {
     if (!document.getElementById('tab-dashboard') || !document.getElementById('tab-dashboard').classList.contains('active')) return;
     
-    // Only update dropdown if empty
     if (dashboardOutletFilter && dashboardOutletFilter.options.length <= 1) {
        updateDashboardOutletFilter();
     }
-    if (leaderboardMonthFilter && leaderboardMonthFilter.options.length <= 1) {
-       updateLeaderboardMonthFilter();
-    }
     
     const filterOutlet = dashboardOutletFilter ? dashboardOutletFilter.value : '';
-    const filterMonth = leaderboardMonthFilter ? leaderboardMonthFilter.value : '';
     
     const now = new Date();
     const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
     let monthReports = reports.filter(r => {
       const m = r.reportDate ? r.reportDate.substring(0, 7) : '';
@@ -4461,48 +4460,50 @@ document.addEventListener('DOMContentLoaded', () => {
     if (filterOutlet) {
       monthReports = monthReports.filter(r => r.outletName === filterOutlet);
     }
-    if (filterMonth) {
-      monthReports = monthReports.filter(r => r.reportDate && r.reportDate.startsWith(filterMonth));
-    }
 
     let monthTargets = allTargets.filter(t => t.month && t.month <= currentMonthStr);
     if (filterOutlet) {
       monthTargets = monthTargets.filter(t => t.outlet === filterOutlet);
     }
-    if (filterMonth) {
-      monthTargets = monthTargets.filter(t => t.month === filterMonth);
-    }
 
     const pgStats = {};
+    const allMonths = new Set();
     
     monthTargets.forEach(t => {
       const m = t.month || 'Unknown';
-      const key = `${t.pg}_${m}`;
+      if (m !== 'Unknown') allMonths.add(m);
+      const key = `${t.pg}_${t.outlet}`;
       if (!pgStats[key]) {
         pgStats[key] = {
           pg: t.pg,
-          month: m,
           outlet: t.outlet,
-          target: 0,
-          actual: 0
+          monthlyActual: {},
+          targetCurrentMonth: 0,
+          actualCurrentMonth: 0,
+          actualToday: 0
         };
       }
-      pgStats[key].target += (parseFloat(t.amount) || 0);
+      if (m === currentMonthStr) {
+        pgStats[key].targetCurrentMonth += (parseFloat(t.amount) || 0);
+      }
     });
 
     monthReports.forEach(r => {
       const pg = r.psName;
       if (!pg) return;
       const m = r.reportDate ? r.reportDate.substring(0, 7) : 'Unknown';
-      const key = `${pg}_${m}`;
+      const outlet = r.outletName || r.programName || '-';
+      if (m !== 'Unknown') allMonths.add(m);
+      const key = `${pg}_${outlet}`;
       
       if (!pgStats[key]) {
         pgStats[key] = {
           pg: pg,
-          month: m,
-          outlet: r.outletName || r.programName || '-',
-          target: 0,
-          actual: 0
+          outlet: outlet,
+          monthlyActual: {},
+          targetCurrentMonth: 0,
+          actualCurrentMonth: 0,
+          actualToday: 0
         };
       }
       
@@ -4515,56 +4516,100 @@ document.addEventListener('DOMContentLoaded', () => {
           reportRevenue += (qty * price);
         });
       }
-      pgStats[key].actual += reportRevenue;
+      
+      if (!pgStats[key].monthlyActual[m]) pgStats[key].monthlyActual[m] = 0;
+      pgStats[key].monthlyActual[m] += reportRevenue;
+      
+      if (m === currentMonthStr) {
+        pgStats[key].actualCurrentMonth += reportRevenue;
+      }
+      
+      if (r.reportDate === todayStr) {
+        pgStats[key].actualToday += reportRevenue;
+      }
     });
 
-    const statsArray = Object.values(pgStats);
-    
     let totalTarget = 0;
     let totalActual = 0;
-
-    statsArray.forEach(s => {
-      totalTarget += s.target;
-      totalActual += s.actual;
-      s.ach = s.target > 0 ? (s.actual / s.target) * 100 : 0;
+    monthTargets.forEach(t => totalTarget += (parseFloat(t.amount) || 0));
+    monthReports.forEach(r => {
+      let reportRevenue = 0;
+      if (r.companyProductSales) {
+        Object.keys(r.companyProductSales).forEach(sku => {
+          const qty = parseInt(r.companyProductSales[sku]) || 0;
+          const prod = allProducts.find(p => p.sku === sku);
+          const price = prod && prod.price ? parseFloat(prod.price) : 0;
+          reportRevenue += (qty * price);
+        });
+      }
+      totalActual += reportRevenue;
     });
 
     if (dashTotalActual) dashTotalActual.textContent = new Intl.NumberFormat('vi-VN').format(totalActual) + ' ₫';
     if (dashTotalTarget) dashTotalTarget.textContent = new Intl.NumberFormat('vi-VN').format(totalTarget) + ' ₫';
     if (dashTotalACH) dashTotalACH.textContent = totalTarget > 0 ? ((totalActual / totalTarget) * 100).toFixed(1) + '%' : '0%';
 
+    const sortedMonths = Array.from(allMonths).sort();
+    const dashboardLeaderboardHeader = document.getElementById('dashboardLeaderboardHeader');
+    if (dashboardLeaderboardHeader) {
+      let trHtml = `
+        <tr style="border-bottom: 2px solid var(--border-glass);">
+          <th style="padding: 10px 8px; color: var(--text-secondary); white-space: nowrap;">PG</th>
+          <th style="padding: 10px 8px; color: var(--text-secondary); white-space: nowrap;">Outlet</th>
+      `;
+      sortedMonths.forEach(m => {
+        const parts = m.split('-');
+        trHtml += `<th style="padding: 10px 8px; color: var(--text-secondary); text-align: right; white-space: nowrap;">T${parts[1]}/${parts[0]} (₫)</th>`;
+      });
+      const curM = currentMonthStr.split('-')[1];
+      trHtml += `
+          <th style="padding: 10px 8px; color: var(--text-secondary); text-align: right; white-space: nowrap;">DS Hôm Nay (₫)</th>
+          <th style="padding: 10px 8px; color: var(--text-secondary); text-align: right; white-space: nowrap;">DS T.${curM} (₫)</th>
+          <th style="padding: 10px 8px; color: var(--text-secondary); text-align: right; white-space: nowrap;">Target T.${curM} (₫)</th>
+          <th style="padding: 10px 8px; color: var(--text-secondary); text-align: right; white-space: nowrap;">% Đạt T.${curM}</th>
+        </tr>
+      `;
+      dashboardLeaderboardHeader.innerHTML = trHtml;
+    }
+
     if (dashboardLeaderboard) {
       dashboardLeaderboard.innerHTML = '';
+      const statsArray = Object.values(pgStats);
       
       statsArray.sort((a, b) => {
         const pDiff = a.pg.localeCompare(b.pg);
         if (pDiff !== 0) return pDiff;
-        return a.month.localeCompare(b.month);
+        return a.outlet.localeCompare(b.outlet);
       });
 
       statsArray.forEach(s => {
         const tr = document.createElement('tr');
         tr.style.borderBottom = '1px solid var(--border-glass)';
         
+        const ach = s.targetCurrentMonth > 0 ? (s.actualCurrentMonth / s.targetCurrentMonth) * 100 : 0;
         let achColor = 'var(--text-primary)';
-        if (s.ach >= 100) achColor = 'var(--success-color)';
-        else if (s.ach >= 80) achColor = '#eab308';
-        else if (s.target > 0) achColor = 'var(--danger-color)';
+        if (ach >= 100) achColor = 'var(--success-color)';
+        else if (ach >= 80) achColor = '#eab308';
+        else if (s.targetCurrentMonth > 0) achColor = 'var(--danger-color)';
 
-        let displayMonth = s.month;
-        if (displayMonth && displayMonth.includes('-')) {
-            const parts = displayMonth.split('-');
-            displayMonth = `${parts[1]}/${parts[0]}`;
-        }
-
-        tr.innerHTML = `
-          <td style="padding: 10px 8px; font-weight: 600;">${s.pg}</td>
-          <td style="padding: 10px 8px; color: var(--text-secondary);">${s.outlet}</td>
-          <td style="padding: 10px 8px; color: var(--text-secondary);">${displayMonth}</td>
-          <td style="padding: 10px 8px; text-align: right;">${new Intl.NumberFormat('vi-VN').format(s.target)}</td>
-          <td style="padding: 10px 8px; text-align: right; font-weight: 600;">${new Intl.NumberFormat('vi-VN').format(s.actual)}</td>
-          <td style="padding: 10px 8px; text-align: right; color: ${achColor}; font-weight: 700;">${s.target > 0 ? s.ach.toFixed(1) + '%' : 'N/A'}</td>
+        let trHtml = `
+          <td style="padding: 10px 8px; font-weight: 600; white-space: nowrap;">${s.pg}</td>
+          <td style="padding: 10px 8px; color: var(--text-secondary); white-space: nowrap;">${s.outlet}</td>
         `;
+
+        sortedMonths.forEach(m => {
+          const val = s.monthlyActual[m] || 0;
+          trHtml += `<td style="padding: 10px 8px; text-align: right; white-space: nowrap;">${new Intl.NumberFormat('vi-VN').format(val)}</td>`;
+        });
+
+        trHtml += `
+          <td style="padding: 10px 8px; text-align: right; color: var(--primary-color); font-weight: 600; white-space: nowrap;">${new Intl.NumberFormat('vi-VN').format(s.actualToday)}</td>
+          <td style="padding: 10px 8px; text-align: right; font-weight: 600; white-space: nowrap;">${new Intl.NumberFormat('vi-VN').format(s.actualCurrentMonth)}</td>
+          <td style="padding: 10px 8px; text-align: right; white-space: nowrap;">${new Intl.NumberFormat('vi-VN').format(s.targetCurrentMonth)}</td>
+          <td style="padding: 10px 8px; text-align: right; color: ${achColor}; font-weight: 700; white-space: nowrap;">${s.targetCurrentMonth > 0 ? ach.toFixed(1) + '%' : 'N/A'}</td>
+        `;
+        
+        tr.innerHTML = trHtml;
         dashboardLeaderboard.appendChild(tr);
       });
     }

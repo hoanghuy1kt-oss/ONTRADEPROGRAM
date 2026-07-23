@@ -908,21 +908,11 @@
             <div style="background: #ffffff; border: 1px solid var(--border-glass); border-radius: 8px; padding: 15px;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h5 style="margin: 0; font-size: 0.9rem;">Chi tiết PG</h5>
-                <select id="leaderboardMonthFilter" class="input-control" style="padding: 4px 8px; font-size: 0.8rem; width: 160px; height: 30px;">
-                  <option value="">Tất cả các tháng</option>
-                </select>
               </div>
               <div style="overflow-x: auto;">
-                <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left;">
-                  <thead>
-                    <tr style="border-bottom: 2px solid var(--border-glass);">
-                      <th style="padding: 10px 8px; color: var(--text-secondary);">PG</th>
-                      <th style="padding: 10px 8px; color: var(--text-secondary);">Outlet</th>
-                      <th style="padding: 10px 8px; color: var(--text-secondary);">Tháng</th>
-                      <th style="padding: 10px 8px; color: var(--text-secondary); text-align: right;">Target (₫)</th>
-                      <th style="padding: 10px 8px; color: var(--text-secondary); text-align: right;">Actual (₫)</th>
-                      <th style="padding: 10px 8px; color: var(--text-secondary); text-align: right;">ACH %</th>
-                    </tr>
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left; min-width: 800px;">
+                  <thead id="dashboardLeaderboardHeader">
+                    <!-- Injected via JS -->
                   </thead>
                   <tbody id="dashboardLeaderboard">
                     <!-- Injected via JS -->
