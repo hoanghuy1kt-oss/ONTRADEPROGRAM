@@ -3823,10 +3823,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const sumPsRevenueToday = document.getElementById('sumPsRevenueToday');
-        const sumPsRevenueMonth = document.getElementById('sumPsRevenueMonth');
+        const sumPsActualMonth = document.getElementById('sumPsActualMonth');
+        const sumPsTargetMonth = document.getElementById('sumPsTargetMonth');
         const sumPsACH = document.getElementById('sumPsACH');
 
-        if (sumPsRevenueToday && sumPsRevenueMonth && sumPsACH) {
+        if (sumPsRevenueToday && sumPsActualMonth && sumPsTargetMonth && sumPsACH) {
           const monthStr = `${yyyy}-${mm}`;
           const currentTarget = allTargets.find(t => 
             t.pg && t.pg.trim().toLowerCase() === psNameVal.trim().toLowerCase() && 
@@ -3869,7 +3870,8 @@ document.addEventListener('DOMContentLoaded', () => {
           if (currentTarget && currentTarget.amount > 0) {
             const ach = (totalActual / currentTarget.amount) * 100;
             
-            sumPsRevenueMonth.textContent = `${new Intl.NumberFormat('vi-VN').format(totalActual)} ₫ / ${new Intl.NumberFormat('vi-VN').format(currentTarget.amount)} ₫`;
+            sumPsActualMonth.textContent = `${new Intl.NumberFormat('vi-VN').format(totalActual)} ₫`;
+            sumPsTargetMonth.textContent = `${new Intl.NumberFormat('vi-VN').format(currentTarget.amount)} ₫`;
             sumPsACH.textContent = `${ach.toFixed(1)}%`;
             
             let color = 'var(--text-primary)';
@@ -3878,7 +3880,8 @@ document.addEventListener('DOMContentLoaded', () => {
             else color = 'var(--danger-color)';
             sumPsACH.style.color = color;
           } else {
-            sumPsRevenueMonth.textContent = `${new Intl.NumberFormat('vi-VN').format(totalActual)} ₫ / 0 ₫`;
+            sumPsActualMonth.textContent = `${new Intl.NumberFormat('vi-VN').format(totalActual)} ₫`;
+            sumPsTargetMonth.textContent = '0 ₫';
             sumPsACH.textContent = '0%';
             sumPsACH.style.color = 'var(--text-primary)';
           }
