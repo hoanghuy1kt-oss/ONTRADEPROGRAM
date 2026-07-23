@@ -4212,8 +4212,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
           newTargets.push({
             month: monthStr,
-            outlet: outletCell,
-            pg: pgCell,
+            outlet: outletCell ? outletCell.toString().trim() : '',
+            pg: pgCell ? pgCell.toString().trim() : '',
             amount: amount
           });
         });
@@ -4232,7 +4232,10 @@ document.addEventListener('DOMContentLoaded', () => {
           // For simplicity, we just add them and use custom ID logic, or delete old ones first.
           for (const nt of newTargets) {
             // Find existing target for same PG + Month
-            const existing = allTargets.find(t => t.pg === nt.pg && t.month === nt.month);
+            const existing = allTargets.find(t => 
+              t.pg && t.pg.trim().toLowerCase() === nt.pg.toLowerCase() && 
+              t.month === nt.month
+            );
             if (existing) {
                batch.update(targetRef.doc(existing.id), { outlet: nt.outlet, amount: nt.amount });
             } else {
@@ -4245,7 +4248,10 @@ document.addEventListener('DOMContentLoaded', () => {
           showToast('Thành công', `Đã nhập ${newTargets.length} chỉ tiêu.`, 'success');
         } else {
           for (const nt of newTargets) {
-            const existingIdx = allTargets.findIndex(t => t.pg === nt.pg && t.month === nt.month);
+            const existingIdx = allTargets.findIndex(t => 
+              t.pg && t.pg.trim().toLowerCase() === nt.pg.toLowerCase() && 
+              t.month === nt.month
+            );
             if (existingIdx !== -1) {
               allTargets[existingIdx].outlet = nt.outlet;
               allTargets[existingIdx].amount = nt.amount;
