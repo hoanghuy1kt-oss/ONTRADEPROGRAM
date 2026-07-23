@@ -3828,7 +3828,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (sumPsRevenueToday && sumPsRevenueMonth && sumPsACH) {
           const monthStr = `${yyyy}-${mm}`;
-          const currentTarget = allTargets.find(t => t.pg === psNameVal && t.month === monthStr);
+          const currentTarget = allTargets.find(t => 
+            t.pg && t.pg.trim().toLowerCase() === psNameVal.trim().toLowerCase() && 
+            t.month && t.month.trim() === monthStr
+          );
           
           let revenueToday = 0;
           if (newPsReport.companyProductSales) {
