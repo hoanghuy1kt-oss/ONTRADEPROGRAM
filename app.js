@@ -4266,7 +4266,7 @@ document.addEventListener('DOMContentLoaded', () => {
               allTargets.push(nt);
             }
           }
-          localStorage.setItem('diageo_targets', JSON.stringify(allTargets));
+          localStorage.setItem('diageo_pg_targets', JSON.stringify(allTargets));
           renderTargetCrudList();
           showToast('Thành công', `Đã nhập ${newTargets.length} chỉ tiêu.`, 'success');
         }
