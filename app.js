@@ -255,12 +255,11 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error("Firestore targets sync error:", error);
       });
     } else {
-      const stored = localStorage.getItem('diageo_pg_targets');
+      const stored = localStorage.getItem('diageo_pg_targets') || localStorage.getItem('diageo_targets');
       if (stored) {
-        allTargets = JSON.parse(stored);
+        try { allTargets = JSON.parse(stored); } catch (e) { allTargets = []; }
       } else {
         allTargets = [];
-        localStorage.setItem('diageo_pg_targets', JSON.stringify(allTargets));
       }
       if (typeof renderTargetCrudList === 'function') renderTargetCrudList();
       if (typeof renderDashboard === 'function') renderDashboard();
