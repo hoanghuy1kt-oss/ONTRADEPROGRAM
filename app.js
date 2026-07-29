@@ -27,8 +27,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // One-time localStorage wipe to clear old mock data (programs and reports)
   if (!localStorage.getItem('diageo_data_wiped_v2')) {
-    localStorage.removeItem('diageo_reports');
-    localStorage.removeItem('diageo_programs');
+    // Old localStorage wipe removed
+    // Old localStorage wipe removed
     localStorage.setItem('diageo_data_wiped_v2', 'true');
     console.log("Old Diageo mock data wiped from localStorage.");
   }
@@ -137,7 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
               });
             } else {
               // Delete duplicate from Firestore to clean up database
-              db.collection('products').doc(doc.id).delete().catch(console.error);
+              // Auto-delete duplicate product removed
             }
           }
         });
