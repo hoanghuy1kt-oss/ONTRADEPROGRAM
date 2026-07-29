@@ -33,28 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log("Old Diageo mock data wiped from localStorage.");
   }
   
-  // One-time target wipe to fix invalid data (>500 docs support)
-  if (!localStorage.getItem('target_wiped_v4')) {
-    localStorage.removeItem('diageo_targets');
-    if (useFirebase) {
-      async function clearAllTargets() {
-        let snapshot = await db.collection('pg_targets').limit(400).get();
-        while (!snapshot.empty) {
-          const batch = db.batch();
-          snapshot.forEach(doc => batch.delete(doc.ref));
-          await batch.commit();
-          snapshot = await db.collection('pg_targets').limit(400).get();
-        }
-      }
-      clearAllTargets().then(() => {
-        console.log("Old target data completely wiped from Firebase.");
-        localStorage.setItem('target_wiped_v4', 'true');
-        setTimeout(() => window.location.reload(), 1000);
-      }).catch(e => console.error("Error wiping targets:", e));
-    } else {
-      localStorage.setItem('target_wiped_v4', 'true');
-    }
-  }
+  // Auto-wipe removed to prevent clearing Firebase targets
 
   // DOM Elements
   const form = document.getElementById('activationForm');
@@ -1706,7 +1685,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (report.companyProductSales) {
           Object.keys(report.companyProductSales).forEach(sku => {
             const qty = report.companyProductSales[sku];
-            const product = allProducts.find(p => p.sku === sku);
+            const product = allProducts.find(p => p.sku && sku && p.sku.trim().toLowerCase() === sku.trim().toLowerCase());
             const price = product && product.price ? parseFloat(product.price) : 0;
             totalRevenue += price * qty;
           });
@@ -1872,7 +1851,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (report.companyProductSales) {
           Object.keys(report.companyProductSales).forEach(sku => {
             const qty = report.companyProductSales[sku];
-            const product = allProducts.find(p => p.sku === sku);
+            const product = allProducts.find(p => p.sku && sku && p.sku.trim().toLowerCase() === sku.trim().toLowerCase());
             const price = product && product.price ? parseFloat(product.price) : 0;
             totalRevenue += price * qty;
 
@@ -3130,7 +3109,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const salesMap = report.companyProductSales || {};
         Object.keys(salesMap).forEach((sku) => {
           const qty = salesMap[sku];
-          const product = allProducts.find(p => p.sku === sku);
+          const product = allProducts.find(p => p.sku && sku && p.sku.trim().toLowerCase() === sku.trim().toLowerCase());
           const price = product && product.price ? parseFloat(product.price) : 0;
           const revenue = price * qty;
 
@@ -3837,7 +3816,7 @@ document.addEventListener('DOMContentLoaded', () => {
           let revenueToday = 0;
           if (newPsReport.companyProductSales) {
             Object.keys(newPsReport.companyProductSales).forEach(sku => {
-              const prod = allProducts.find(p => p.sku === sku);
+              const prod = allProducts.find(p => p.sku && sku && p.sku.trim().toLowerCase() === sku.trim().toLowerCase());
               const price = prod && prod.price ? parseFloat(prod.price) : 0;
               const qty = parseInt(newPsReport.companyProductSales[sku]) || 0;
               revenueToday += (qty * price);
@@ -3849,11 +3828,11 @@ document.addEventListener('DOMContentLoaded', () => {
           let totalActual = 0;
           let reportIds = new Set();
           reports.forEach(r => {
-            if (r.psName === psNameVal && r.reportDate && r.reportDate.startsWith(monthStr)) {
+            if (r.psName && psNameVal && r.psName.trim().toLowerCase() === psNameVal.trim().toLowerCase() && r.reportDate && r.reportDate.startsWith(monthStr)) {
               reportIds.add(r.id);
               if (r.companyProductSales) {
                 Object.keys(r.companyProductSales).forEach(sku => {
-                  const prod = allProducts.find(p => p.sku === sku);
+                  const prod = allProducts.find(p => p.sku && sku && p.sku.trim().toLowerCase() === sku.trim().toLowerCase());
                   const price = prod && prod.price ? parseFloat(prod.price) : 0;
                   const qty = parseInt(r.companyProductSales[sku]) || 0;
                   totalActual += (qty * price);
@@ -4514,7 +4493,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (r.companyProductSales) {
         Object.keys(r.companyProductSales).forEach(sku => {
           const qty = parseInt(r.companyProductSales[sku]) || 0;
-          const prod = allProducts.find(p => p.sku === sku);
+          const prod = allProducts.find(p => p.sku && sku && p.sku.trim().toLowerCase() === sku.trim().toLowerCase());
           const price = prod && prod.price ? parseFloat(prod.price) : 0;
           reportRevenue += (qty * price);
         });
@@ -4540,7 +4519,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (r.companyProductSales) {
         Object.keys(r.companyProductSales).forEach(sku => {
           const qty = parseInt(r.companyProductSales[sku]) || 0;
-          const prod = allProducts.find(p => p.sku === sku);
+          const prod = allProducts.find(p => p.sku && sku && p.sku.trim().toLowerCase() === sku.trim().toLowerCase());
           const price = prod && prod.price ? parseFloat(prod.price) : 0;
           reportRevenue += (qty * price);
         });
@@ -4649,7 +4628,7 @@ document.addEventListener('DOMContentLoaded', () => {
           if (r.companyProductSales) {
             Object.keys(r.companyProductSales).forEach(sku => {
               const qty = parseInt(r.companyProductSales[sku]) || 0;
-              const prod = allProducts.find(p => p.sku === sku);
+              const prod = allProducts.find(p => p.sku && sku && p.sku.trim().toLowerCase() === sku.trim().toLowerCase());
               const price = prod && prod.price ? parseFloat(prod.price) : 0;
               mActual += (qty * price);
             });
@@ -4684,7 +4663,7 @@ document.addEventListener('DOMContentLoaded', () => {
           if (r.companyProductSales) {
             Object.keys(r.companyProductSales).forEach(sku => {
               const qty = parseInt(r.companyProductSales[sku]) || 0;
-              const prod = allProducts.find(p => p.sku === sku);
+              const prod = allProducts.find(p => p.sku && sku && p.sku.trim().toLowerCase() === sku.trim().toLowerCase());
               const price = prod && prod.price ? parseFloat(prod.price) : 0;
               wActual += (qty * price);
             });
@@ -4711,7 +4690,7 @@ document.addEventListener('DOMContentLoaded', () => {
           if (r.companyProductSales) {
             Object.keys(r.companyProductSales).forEach(sku => {
               const qty = parseInt(r.companyProductSales[sku]) || 0;
-              const prod = allProducts.find(p => p.sku === sku);
+              const prod = allProducts.find(p => p.sku && sku && p.sku.trim().toLowerCase() === sku.trim().toLowerCase());
               const price = prod && prod.price ? parseFloat(prod.price) : 0;
               dActual += (qty * price);
             });
