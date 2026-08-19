@@ -4593,6 +4593,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const labels = [];
     const actualData = [];
+    const targetData = [];
     
     const scale = document.getElementById('chartTimeScaleFilter') ? document.getElementById('chartTimeScaleFilter').value : 'month';
     const filterOutlet = dashboardOutletFilter ? dashboardOutletFilter.value : '';
@@ -4623,6 +4624,12 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         });
         actualData.push(mActual);
+
+        let mTargets = allTargets.filter(t => t.month === monthStr);
+        if (filterOutlet) mTargets = mTargets.filter(t => t.outlet === filterOutlet);
+        let mTarget = 0;
+        mTargets.forEach(t => mTarget += (parseFloat(t.amount) || 0));
+        targetData.push(mTarget);
       }
     } else if (scale === 'week') {
       const dayOfWeek = today.getDay();
@@ -4658,6 +4665,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         });
         actualData.push(wActual);
+        targetData.push(0);
       }
     } else if (scale === 'day') {
       const currentDay = new Date();
@@ -4685,6 +4693,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         });
         actualData.push(dActual);
+        targetData.push(0);
       }
     }
 
@@ -4697,7 +4706,7 @@ document.addEventListener('DOMContentLoaded', () => {
       data: {
         labels: labels,
         datasets: [{
-          label: 'Doanh Thu Actual (VNĐ)',
+          label: 'Doanh Thu Actual',
           data: actualData,
           backgroundColor: 'rgba(147, 51, 234, 0.6)',
           borderColor: 'rgba(147, 51, 234, 1)',
@@ -4713,12 +4722,21 @@ document.addEventListener('DOMContentLoaded', () => {
           tooltip: {
             callbacks: {
               label: function(context) {
-                let label = context.dataset.label || '';
-                if (label) label += ': ';
-                if (context.parsed.y !== null) {
-                  label += new Intl.NumberFormat('vi-VN').format(context.parsed.y) + ' ₫';
+                const idx = context.dataIndex;
+                const actual = actualData[idx] || 0;
+                const target = targetData[idx] || 0;
+                const formattedActual = new Intl.NumberFormat('vi-VN').format(actual) + ' ₫';
+                
+                if (scale === 'month') {
+                  const formattedTarget = new Intl.NumberFormat('vi-VN').format(target) + ' ₫';
+                  const achStr = target > 0 ? ((actual / target) * 100).toFixed(1) + '%' : (actual > 0 ? '100%' : '0%');
+                  return [
+                    ` Doanh Thu Actual: ${formattedActual}`,
+                    ` Chỉ Tiêu Target: ${formattedTarget}`,
+                    ` % Đạt Target (ACH): ${achStr}`
+                  ];
                 }
-                return label;
+                return ` Doanh Thu Actual: ${formattedActual}`;
               }
             }
           }
