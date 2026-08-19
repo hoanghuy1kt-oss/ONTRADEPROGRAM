@@ -182,7 +182,7 @@
 
           <!-- Company products sold quantities -->
           <div class="form-group" id="group-ps-products" style="margin-top: 15px;">
-            <label class="form-label" style="font-weight: 700; color: var(--text-primary);">Số lượng rượu công ty bán <span class="required">*</span></label>
+            <label class="form-label" style="font-weight: 700; color: var(--text-primary);">Số lượng rượu công ty bán <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-muted);">(Không bắt buộc)</span></label>
             
             <div class="product-search-wrapper" style="margin-bottom: 12px; position: relative;">
               <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.85rem;"></i>
@@ -3311,16 +3311,9 @@
                 </select>
               </div>
               <div style="overflow-x: auto;">
-                <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left;">
-                  <thead>
-                    <tr style="border-bottom: 2px solid var(--border-glass);">
-                      <th style="padding: 10px 8px; color: var(--text-secondary);">PG</th>
-                      <th style="padding: 10px 8px; color: var(--text-secondary);">Outlet</th>
-                      <th style="padding: 10px 8px; color: var(--text-secondary);">Tháng</th>
-                      <th style="padding: 10px 8px; color: var(--text-secondary); text-align: right;">Target (₫)</th>
-                      <th style="padding: 10px 8px; color: var(--text-secondary); text-align: right;">Actual (₫)</th>
-                      <th style="padding: 10px 8px; color: var(--text-secondary); text-align: right;">ACH %</th>
-                    </tr>
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left; min-width: 800px;">
+                  <thead id="dashboardLeaderboardHeader">
+                    <!-- Injected dynamically via JS -->
                   </thead>
                   <tbody id="dashboardLeaderboard">
                     <!-- Injected via JS -->

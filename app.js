@@ -2159,21 +2159,15 @@ document.addEventListener('DOMContentLoaded', () => {
         updatedFields.beerCustCount = parseInt(editPsBeerCust.value) || 0;
         updatedFields.competitorCustCount = parseInt(editPsCompetitorCust.value) || 0;
 
-        // Parse product sales quantities
+        // Parse product sales quantities (Optional)
         const companyProductSales = {};
-        let totalQty = 0;
         document.querySelectorAll('.edit-ps-qty-input').forEach(input => {
           const sku = input.dataset.sku;
           const qty = parseInt(input.value) || 0;
           if (qty > 0) {
             companyProductSales[sku] = qty;
-            totalQty += qty;
           }
         });
-        if (totalQty === 0) {
-          showToast('Số lượng trống', 'Vui lòng nhập ít nhất 1 sản phẩm bán ra.', 'warning');
-          return;
-        }
         updatedFields.companyProductSales = companyProductSales;
 
       } else {
@@ -3737,24 +3731,14 @@ document.addEventListener('DOMContentLoaded', () => {
         isValid = false;
       }
 
-      // 7. Products sold quantities check
+      // 7. Products sold quantities check (Optional)
       const salesData = {};
-      let totalQty = 0;
       Object.keys(psProductQuantities).forEach(sku => {
         const qty = parseInt(psProductQuantities[sku]) || 0;
         if (qty > 0) {
           salesData[sku] = qty;
-          totalQty += qty;
         }
       });
-
-      if (totalQty === 0) {
-        if (prodErr) {
-          prodErr.textContent = 'Vui lòng nhập số lượng cho ít nhất 1 sản phẩm rượu công ty bán.';
-          prodErr.style.display = 'block';
-        }
-        isValid = false;
-      }
 
       if (!isValid) {
         showToast('Gửi thất bại', 'Vui lòng điền đầy đủ và chính xác các thông tin cần thiết.', 'error');
@@ -3797,15 +3781,20 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (sumPsProductsList) {
           sumPsProductsList.innerHTML = '';
-          Object.keys(salesData).forEach(sku => {
-            const row = document.createElement('div');
-            row.style.cssText = 'display: flex; justify-content: space-between; font-size: 0.8rem; border-bottom: 1px dotted var(--border-glass); padding-bottom: 4px;';
-            row.innerHTML = `
-              <span style="color: var(--text-secondary);">${sku}</span>
-              <span style="font-weight: 700; color: var(--text-primary);">${salesData[sku]} chai</span>
-            `;
-            sumPsProductsList.appendChild(row);
-          });
+          const productKeys = Object.keys(salesData);
+          if (productKeys.length === 0) {
+            sumPsProductsList.innerHTML = '<div style="font-size: 0.8rem; color: var(--text-muted); font-style: italic; padding: 4px 0;">Không có sản phẩm nào bán ra (0 chai).</div>';
+          } else {
+            productKeys.forEach(sku => {
+              const row = document.createElement('div');
+              row.style.cssText = 'display: flex; justify-content: space-between; font-size: 0.8rem; border-bottom: 1px dotted var(--border-glass); padding-bottom: 4px;';
+              row.innerHTML = `
+                <span style="color: var(--text-secondary);">${sku}</span>
+                <span style="font-weight: 700; color: var(--text-primary);">${salesData[sku]} chai</span>
+              `;
+              sumPsProductsList.appendChild(row);
+            });
+          }
         }
 
         const sumPsRevenueToday = document.getElementById('sumPsRevenueToday');
@@ -4403,30 +4392,37 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateLeaderboardMonthFilter() {
     if (!leaderboardMonthFilter) return;
     const current = leaderboardMonthFilter.value;
-    leaderboardMonthFilter.innerHTML = '<option value="">Tất cả các tháng</option>';
     
     const monthsSet = new Set();
     const now = new Date();
     const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    monthsSet.add(currentMonthStr);
 
     reports.forEach(r => {
       if (r.reportDate) {
-         const m = r.reportDate.substring(0, 7);
-         if (m <= currentMonthStr) monthsSet.add(m);
+        const m = r.reportDate.substring(0, 7);
+        if (m) monthsSet.add(m);
       }
     });
     allTargets.forEach(t => {
-      if (t.month && t.month <= currentMonthStr) monthsSet.add(t.month);
+      if (t.month) monthsSet.add(t.month);
     });
     
     const sortedMonths = Array.from(monthsSet).sort().reverse();
+    leaderboardMonthFilter.innerHTML = '';
     sortedMonths.forEach(m => {
+      const parts = m.split('-');
       const opt = document.createElement('option');
       opt.value = m;
-      opt.textContent = m;
+      opt.textContent = `Tháng ${parts[1]}/${parts[0]}`;
       leaderboardMonthFilter.appendChild(opt);
     });
-    leaderboardMonthFilter.value = current;
+
+    if (current && monthsSet.has(current)) {
+      leaderboardMonthFilter.value = current;
+    } else {
+      leaderboardMonthFilter.value = currentMonthStr;
+    }
   }
 
   function renderDashboard() {
@@ -4435,6 +4431,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dashboardOutletFilter && dashboardOutletFilter.options.length <= 1) {
        updateDashboardOutletFilter();
     }
+    updateLeaderboardMonthFilter();
     
     const filterOutlet = dashboardOutletFilter ? dashboardOutletFilter.value : '';
     
@@ -4442,56 +4439,53 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
+    // Get selected month from leaderboardMonthFilter
+    const selectedMonth = (leaderboardMonthFilter && leaderboardMonthFilter.value) ? leaderboardMonthFilter.value : currentMonthStr;
+    const [selYear, selMonth] = selectedMonth.split('-');
+
+    // Reports for the selected month
     let monthReports = reports.filter(r => {
       const m = r.reportDate ? r.reportDate.substring(0, 7) : '';
-      return m && m <= currentMonthStr;
+      return m === selectedMonth;
     });
     if (filterOutlet) {
       monthReports = monthReports.filter(r => r.outletName === filterOutlet);
     }
 
-    let monthTargets = allTargets.filter(t => t.month && t.month <= currentMonthStr);
+    // Targets for the selected month
+    let monthTargets = allTargets.filter(t => t.month === selectedMonth);
     if (filterOutlet) {
       monthTargets = monthTargets.filter(t => t.outlet === filterOutlet);
     }
 
     const pgStats = {};
-    const allMonths = new Set();
-    
+
     monthTargets.forEach(t => {
-      const m = t.month || 'Unknown';
-      if (m !== 'Unknown') allMonths.add(m);
       const key = `${t.pg}_${t.outlet}`;
       if (!pgStats[key]) {
         pgStats[key] = {
           pg: t.pg,
           outlet: t.outlet,
-          monthlyActual: {},
-          targetCurrentMonth: 0,
-          actualCurrentMonth: 0,
+          targetMonth: 0,
+          actualMonth: 0,
           actualToday: 0
         };
       }
-      if (m === currentMonthStr) {
-        pgStats[key].targetCurrentMonth += (parseFloat(t.amount) || 0);
-      }
+      pgStats[key].targetMonth += (parseFloat(t.amount) || 0);
     });
 
     monthReports.forEach(r => {
       const pg = r.psName;
       if (!pg) return;
-      const m = r.reportDate ? r.reportDate.substring(0, 7) : 'Unknown';
       const outlet = r.outletName || r.programName || '-';
-      if (m !== 'Unknown') allMonths.add(m);
       const key = `${pg}_${outlet}`;
       
       if (!pgStats[key]) {
         pgStats[key] = {
           pg: pg,
           outlet: outlet,
-          monthlyActual: {},
-          targetCurrentMonth: 0,
-          actualCurrentMonth: 0,
+          targetMonth: 0,
+          actualMonth: 0,
           actualToday: 0
         };
       }
@@ -4506,12 +4500,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
       
-      if (!pgStats[key].monthlyActual[m]) pgStats[key].monthlyActual[m] = 0;
-      pgStats[key].monthlyActual[m] += reportRevenue;
-      
-      if (m === currentMonthStr) {
-        pgStats[key].actualCurrentMonth += reportRevenue;
-      }
+      pgStats[key].actualMonth += reportRevenue;
       
       if (r.reportDate === todayStr) {
         pgStats[key].actualToday += reportRevenue;
@@ -4536,71 +4525,63 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (dashTotalActual) dashTotalActual.textContent = new Intl.NumberFormat('vi-VN').format(totalActual) + ' ₫';
     if (dashTotalTarget) dashTotalTarget.textContent = new Intl.NumberFormat('vi-VN').format(totalTarget) + ' ₫';
-    if (dashTotalACH) dashTotalACH.textContent = totalTarget > 0 ? ((totalActual / totalTarget) * 100).toFixed(1) + '%' : '0%';
+    if (dashTotalACH) dashTotalACH.textContent = totalTarget > 0 ? ((totalActual / totalTarget) * 100).toFixed(1) + '%' : (totalActual > 0 ? '100%' : '0%');
 
-    const sortedMonths = Array.from(allMonths).sort();
     const dashboardLeaderboardHeader = document.getElementById('dashboardLeaderboardHeader');
     if (dashboardLeaderboardHeader) {
-      let trHtml = `
+      dashboardLeaderboardHeader.innerHTML = `
         <tr style="border-bottom: 2px solid var(--border-glass);">
           <th style="padding: 10px 8px; color: var(--text-secondary); white-space: nowrap;">PG</th>
           <th style="padding: 10px 8px; color: var(--text-secondary); white-space: nowrap;">Outlet</th>
-      `;
-      sortedMonths.forEach(m => {
-        const parts = m.split('-');
-        trHtml += `<th style="padding: 10px 8px; color: var(--text-secondary); text-align: right; white-space: nowrap;">T${parts[1]}/${parts[0]} (₫)</th>`;
-      });
-      const curM = currentMonthStr.split('-')[1];
-      trHtml += `
           <th style="padding: 10px 8px; color: var(--text-secondary); text-align: right; white-space: nowrap;">DS Hôm Nay (₫)</th>
-          <th style="padding: 10px 8px; color: var(--text-secondary); text-align: right; white-space: nowrap;">DS T.${curM} (₫)</th>
-          <th style="padding: 10px 8px; color: var(--text-secondary); text-align: right; white-space: nowrap;">Target T.${curM} (₫)</th>
-          <th style="padding: 10px 8px; color: var(--text-secondary); text-align: right; white-space: nowrap;">% Đạt T.${curM}</th>
+          <th style="padding: 10px 8px; color: var(--text-secondary); text-align: right; white-space: nowrap;">DS T.${selMonth} (₫)</th>
+          <th style="padding: 10px 8px; color: var(--text-secondary); text-align: right; white-space: nowrap;">Target T.${selMonth} (₫)</th>
+          <th style="padding: 10px 8px; color: var(--text-secondary); text-align: right; white-space: nowrap;">% Đạt T.${selMonth}</th>
         </tr>
       `;
-      dashboardLeaderboardHeader.innerHTML = trHtml;
     }
 
     if (dashboardLeaderboard) {
       dashboardLeaderboard.innerHTML = '';
       const statsArray = Object.values(pgStats);
       
-      statsArray.sort((a, b) => {
-        const pDiff = a.pg.localeCompare(b.pg);
-        if (pDiff !== 0) return pDiff;
-        return a.outlet.localeCompare(b.outlet);
-      });
-
-      statsArray.forEach(s => {
-        const tr = document.createElement('tr');
-        tr.style.borderBottom = '1px solid var(--border-glass)';
-        
-        const ach = s.targetCurrentMonth > 0 ? (s.actualCurrentMonth / s.targetCurrentMonth) * 100 : 0;
-        let achColor = 'var(--text-primary)';
-        if (ach >= 100) achColor = 'var(--success-color)';
-        else if (ach >= 80) achColor = '#eab308';
-        else if (s.targetCurrentMonth > 0) achColor = 'var(--danger-color)';
-
-        let trHtml = `
-          <td style="padding: 10px 8px; font-weight: 600; white-space: nowrap;">${s.pg}</td>
-          <td style="padding: 10px 8px; color: var(--text-secondary); white-space: nowrap;">${s.outlet}</td>
+      if (statsArray.length === 0) {
+        dashboardLeaderboard.innerHTML = `
+          <tr>
+            <td colspan="6" style="padding: 20px; text-align: center; color: var(--text-muted); font-style: italic;">
+              Không có dữ liệu cho Tháng ${selMonth}/${selYear}.
+            </td>
+          </tr>
         `;
-
-        sortedMonths.forEach(m => {
-          const val = s.monthlyActual[m] || 0;
-          trHtml += `<td style="padding: 10px 8px; text-align: right; white-space: nowrap;">${new Intl.NumberFormat('vi-VN').format(val)}</td>`;
+      } else {
+        statsArray.sort((a, b) => {
+          const pDiff = a.pg.localeCompare(b.pg);
+          if (pDiff !== 0) return pDiff;
+          return a.outlet.localeCompare(b.outlet);
         });
 
-        trHtml += `
-          <td style="padding: 10px 8px; text-align: right; color: var(--primary-color); font-weight: 600; white-space: nowrap;">${new Intl.NumberFormat('vi-VN').format(s.actualToday)}</td>
-          <td style="padding: 10px 8px; text-align: right; font-weight: 600; white-space: nowrap;">${new Intl.NumberFormat('vi-VN').format(s.actualCurrentMonth)}</td>
-          <td style="padding: 10px 8px; text-align: right; white-space: nowrap;">${new Intl.NumberFormat('vi-VN').format(s.targetCurrentMonth)}</td>
-          <td style="padding: 10px 8px; text-align: right; color: ${achColor}; font-weight: 700; white-space: nowrap;">${s.targetCurrentMonth > 0 ? ach.toFixed(1) + '%' : 'N/A'}</td>
-        `;
-        
-        tr.innerHTML = trHtml;
-        dashboardLeaderboard.appendChild(tr);
-      });
+        statsArray.forEach(s => {
+          const tr = document.createElement('tr');
+          tr.style.borderBottom = '1px solid var(--border-glass)';
+          
+          const ach = s.targetMonth > 0 ? (s.actualMonth / s.targetMonth) * 100 : 0;
+          let achColor = 'var(--text-primary)';
+          if (ach >= 100) achColor = 'var(--success-color)';
+          else if (ach >= 80) achColor = '#eab308';
+          else if (s.targetMonth > 0) achColor = 'var(--danger-color)';
+
+          tr.innerHTML = `
+            <td style="padding: 10px 8px; font-weight: 600; white-space: nowrap;">${s.pg}</td>
+            <td style="padding: 10px 8px; color: var(--text-secondary); white-space: nowrap;">${s.outlet}</td>
+            <td style="padding: 10px 8px; text-align: right; color: var(--primary-color); font-weight: 600; white-space: nowrap;">${new Intl.NumberFormat('vi-VN').format(s.actualToday)}</td>
+            <td style="padding: 10px 8px; text-align: right; font-weight: 600; white-space: nowrap;">${new Intl.NumberFormat('vi-VN').format(s.actualMonth)}</td>
+            <td style="padding: 10px 8px; text-align: right; white-space: nowrap;">${new Intl.NumberFormat('vi-VN').format(s.targetMonth)}</td>
+            <td style="padding: 10px 8px; text-align: right; color: ${achColor}; font-weight: 700; white-space: nowrap;">${s.targetMonth > 0 ? ach.toFixed(1) + '%' : (s.actualMonth > 0 ? '100%' : 'N/A')}</td>
+          `;
+          
+          dashboardLeaderboard.appendChild(tr);
+        });
+      }
     }
 
     renderChart();
