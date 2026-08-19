@@ -121,26 +121,34 @@ document.addEventListener('DOMContentLoaded', () => {
   function initProducts() {
     if (useFirebase) {
       db.collection('products').onSnapshot((snapshot) => {
-        allProducts = [];
-        const seen = new Set();
+        const prodMap = new Map();
         snapshot.forEach((doc) => {
           const data = doc.data();
           if (data.brand && data.sku) {
-            const skuLower = data.sku.toLowerCase();
-            if (!seen.has(skuLower)) {
-              seen.add(skuLower);
-              allProducts.push({
-                id: doc.id,
-                brand: data.brand,
-                sku: data.sku,
-                price: data.price || ''
-              });
+            const skuLower = data.sku.toLowerCase().trim();
+            const currentItem = {
+              id: doc.id,
+              brand: data.brand,
+              sku: data.sku,
+              price: data.price || ''
+            };
+            const existing = prodMap.get(skuLower);
+            if (!existing) {
+              prodMap.set(skuLower, currentItem);
             } else {
-              // Delete duplicate from Firestore to clean up database
-              // Auto-delete duplicate product removed
+              // If existing doc has no price but the new doc has price, prioritize the priced doc
+              if ((!existing.price || existing.price === '0') && currentItem.price && currentItem.price !== '0') {
+                if (useFirebase) db.collection('products').doc(existing.id).delete().catch(() => {});
+                prodMap.set(skuLower, currentItem);
+              } else {
+                // Otherwise delete this duplicate doc
+                if (useFirebase) db.collection('products').doc(currentItem.id).delete().catch(() => {});
+              }
             }
           }
         });
+        
+        allProducts = Array.from(prodMap.values());
         
         // Sort client-side to avoid composite index requirement
         allProducts.sort((a, b) => {
