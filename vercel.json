@@ -1,7 +1,22 @@
 {
-  "rewrites": [
-    { "source": "/event-activation", "destination": "/index.html" },
-    { "source": "/admin", "destination": "/index.html" },
-    { "source": "/(.*)", "destination": "/index.html" }
+  "routes": [
+    {
+      "src": "/report",
+      "status": 308,
+      "headers": {
+        "Location": "/report/"
+      }
+    },
+    {
+      "src": "/report/",
+      "dest": "/report/index.html"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
   ]
 }
