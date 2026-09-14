@@ -2076,3 +2076,5 @@ textarea.input-control {
 
 
 .report-entry{display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:12px 22px;border-radius:12px;background:#14786e;color:#fff;text-decoration:none;font-weight:700;box-shadow:0 4px 14px #14786e22}.report-entry:hover{background:#0d6058}.report-entry:focus-visible{outline:3px solid #70cdc2;outline-offset:3px}
+
+.selection-bottom-actions{display:flex;align-items:center;justify-content:center;gap:20px;flex-wrap:wrap;margin-top:40px}.selection-bottom-actions .btn-admin-link{margin:0}
