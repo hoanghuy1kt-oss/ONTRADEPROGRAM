@@ -2615,9 +2615,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (imgSrc.startsWith('http')) {
       const proxies = [
         `https://images.weserv.nl/?url=${encodeURIComponent(imgSrc)}`,
-        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(imgSrc)}`,
         `https://api.allorigins.win/raw?url=${encodeURIComponent(imgSrc)}`,
-        `https://corsproxy.io/?${encodeURIComponent(imgSrc)}`,
         imgSrc // direct fetch as final fallback
       ];
 
@@ -2627,24 +2625,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const urlToFetch = proxies[proxyIndex];
-        return fetch(urlToFetch)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2500);
+
+        return fetch(urlToFetch, { signal: controller.signal })
           .then(res => {
+            clearTimeout(timeoutId);
+            if (res.status === 402 || res.status === 404 || res.status === 403) {
+              // Server permanently rejected the image (e.g. billing disabled or not found)
+              return { success: false, originalSrc: imgSrc };
+            }
             if (!res.ok) throw new Error("Status " + res.status);
-            return res.blob();
+            return res.blob().then(blob => new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => {
+                const dataUrl = reader.result;
+                const commaIdx = dataUrl.indexOf(',');
+                const base64 = commaIdx !== -1 ? dataUrl.substring(commaIdx + 1) : dataUrl;
+                resolve({ success: true, base64, dataUrl, originalSrc: imgSrc });
+              };
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            }));
           })
-          .then(blob => new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-              const dataUrl = reader.result;
-              const commaIdx = dataUrl.indexOf(',');
-              const base64 = commaIdx !== -1 ? dataUrl.substring(commaIdx + 1) : dataUrl;
-              resolve({ success: true, base64, dataUrl, originalSrc: imgSrc });
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          }))
           .catch(err => {
-            console.warn(`Proxy ${urlToFetch} failed:`, err);
+            clearTimeout(timeoutId);
             return fetchWithFallback(proxyIndex + 1);
           });
       };
