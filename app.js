@@ -2613,28 +2613,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Case 2: Remote HTTP/HTTPS URL
     if (imgSrc.startsWith('http')) {
-      const proxies = [
+      const urlsToTry = [
+        imgSrc, // Try direct fetch first (Firebase Storage has CORS Access-Control-Allow-Origin: *)
         `https://images.weserv.nl/?url=${encodeURIComponent(imgSrc)}`,
-        `https://api.allorigins.win/raw?url=${encodeURIComponent(imgSrc)}`,
-        imgSrc // direct fetch as final fallback
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(imgSrc)}`
       ];
 
-      const fetchWithFallback = (proxyIndex) => {
-        if (proxyIndex >= proxies.length) {
+      const fetchWithFallback = (index) => {
+        if (index >= urlsToTry.length) {
           return Promise.resolve({ success: false, originalSrc: imgSrc });
         }
 
-        const urlToFetch = proxies[proxyIndex];
+        const url = urlsToTry[index];
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2500);
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
 
-        return fetch(urlToFetch, { signal: controller.signal })
+        return fetch(url, { signal: controller.signal })
           .then(res => {
             clearTimeout(timeoutId);
-            if (res.status === 402 || res.status === 404 || res.status === 403) {
-              // Server permanently rejected the image (e.g. billing disabled or not found)
-              return { success: false, originalSrc: imgSrc };
-            }
             if (!res.ok) throw new Error("Status " + res.status);
             return res.blob().then(blob => new Promise((resolve, reject) => {
               const reader = new FileReader();
@@ -2650,7 +2646,7 @@ document.addEventListener('DOMContentLoaded', () => {
           })
           .catch(err => {
             clearTimeout(timeoutId);
-            return fetchWithFallback(proxyIndex + 1);
+            return fetchWithFallback(index + 1);
           });
       };
 
