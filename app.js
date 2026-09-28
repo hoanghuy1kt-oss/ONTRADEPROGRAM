@@ -1098,8 +1098,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!reportWithImage) return;
 
     storageHealthChecked = true;
-    const testUrl = reportWithImage.images[0];
-    fetch(testUrl, { method: 'GET' })
+    const rawUrl = reportWithImage.images[0];
+    const testUrl = rawUrl.includes('?') ? (rawUrl + '&cors=1') : (rawUrl + '?cors=1');
+    fetch(testUrl, { method: 'GET', mode: 'cors' })
       .then(res => {
         if (res.status === 402) {
           showSystemAlertModal({
@@ -1756,6 +1757,7 @@ document.addEventListener('DOMContentLoaded', () => {
           report.images.forEach(imgBase64 => {
             const img = document.createElement('img');
             img.className = 'table-thumbnail';
+            img.crossOrigin = 'anonymous';
             img.src = imgBase64;
             img.alt = 'Proof';
             
@@ -2076,7 +2078,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let imagesHtml = '';
         if (report.images && report.images.length > 0) {
           report.images.forEach(img => {
-            imagesHtml += `<img src="${img}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-glass); cursor: pointer;" onclick="window.open('${img}')">`;
+            imagesHtml += `<img src="${img}" crossorigin="anonymous" style="width: 100px; height: 100px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-glass); cursor: pointer;" onclick="window.open('${img}')">`;
           });
         } else {
           imagesHtml = '<span style="font-size: 0.82rem; color: var(--text-muted); font-style: italic;">Không có hình ảnh.</span>';
@@ -2727,8 +2729,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Case 2: Remote HTTP/HTTPS URL
     if (imgSrc.startsWith('http')) {
+      const directCorsUrl = imgSrc.includes('?') ? (imgSrc + '&cors=1') : (imgSrc + '?cors=1');
       const urlsToTry = [
-        imgSrc, // Try direct fetch first (Firebase Storage has CORS Access-Control-Allow-Origin: *)
+        directCorsUrl, // Try direct fetch with clean CORS cache entry
         `https://images.weserv.nl/?url=${encodeURIComponent(imgSrc)}`,
         `https://api.allorigins.win/raw?url=${encodeURIComponent(imgSrc)}`
       ];
@@ -2742,7 +2745,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 4000);
 
-        return fetch(url, { signal: controller.signal })
+        return fetch(url, { signal: controller.signal, mode: 'cors' })
           .then(res => {
             clearTimeout(timeoutId);
             if (res.status === 402) {
