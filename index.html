@@ -1024,6 +1024,37 @@
     </div>
   </div>
 
+  <!-- System Alert / Error Notification Modal -->
+  <div class="admin-modal-overlay" id="systemAlertModal" style="display: none; z-index: 99999;">
+    <div class="admin-modal-card" style="max-width: 520px;">
+      <div class="admin-modal-header" id="systemAlertHeader" style="background: linear-gradient(to right, #fff1f2, #ffffff); border-bottom: 1px solid #ffe4e6;">
+        <h3 id="systemAlertTitle" style="color: #e11d48; display: flex; align-items: center; gap: 8px; font-size: 1.05rem;">
+          <i class="fa-solid fa-triangle-exclamation" id="systemAlertIcon"></i> <span id="systemAlertTitleText">Cảnh Báo Hệ Thống</span>
+        </h3>
+        <button class="admin-modal-close" id="btnCloseSystemAlert" style="top: auto; right: 24px; position: relative;"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="admin-modal-body">
+        <div id="systemAlertBox" style="padding: 16px; background: #fff1f2; border: 1px solid #ffe4e6; border-radius: 8px; margin-bottom: 18px;">
+          <p id="systemAlertMessage" style="font-size: 0.9rem; color: #be123c; margin-bottom: 0; line-height: 1.6;">
+            Nội dung thông báo
+          </p>
+        </div>
+        
+        <div id="systemAlertDetailWrapper" style="display: none; margin-bottom: 20px;">
+          <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px;">Chi tiết lỗi kỹ thuật:</div>
+          <div id="systemAlertDetail" style="max-height: 120px; overflow-y: auto; background: #f8fafc; padding: 10px 14px; border-radius: 6px; font-size: 0.8rem; border: 1px solid #e2e8f0; color: #475569; font-family: monospace; white-space: pre-wrap; line-height: 1.5;"></div>
+        </div>
+        
+        <div style="display: flex; gap: 10px; justify-content: flex-end; padding-top: 14px; border-top: 1px solid var(--border-glass);">
+          <button type="button" class="btn btn-secondary" id="btnDismissSystemAlert" style="padding: 9px 18px; font-weight: 600;">Đóng</button>
+          <a href="#" target="_blank" class="btn btn-primary" id="btnActionSystemAlert" style="display: none; background: linear-gradient(135deg, #e11d48 0%, #be123c 100%); border: none; padding: 9px 18px; font-weight: 600; text-decoration: none; align-items: center; gap: 6px;">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i> <span id="systemAlertActionText">Xử lý ngay</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Edit Product Modal -->
   <div class="edit-program-modal" id="editProductModal" style="display: none;">
     <div class="edit-program-card" style="width: 90%; max-width: 450px; display: flex; flex-direction: column; gap: 15px;">

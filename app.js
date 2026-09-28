@@ -235,6 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
           reports.push(doc.data());
         });
         renderReportsTable();
+        checkStorageHealth();
       }, (error) => {
         console.error("Firestore reports sync error:", error);
       });
@@ -1004,6 +1005,116 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // System Alert Modal (Prominent Popup for Critical Alerts / Errors)
+  function showSystemAlertModal({ title, message, errorDetail = '', actionText = '', actionUrl = '', type = 'error' }) {
+    const modal = document.getElementById('systemAlertModal');
+    if (!modal) return;
+
+    const titleText = document.getElementById('systemAlertTitleText');
+    const titleEl = document.getElementById('systemAlertTitle');
+    const icon = document.getElementById('systemAlertIcon');
+    const header = document.getElementById('systemAlertHeader');
+    const box = document.getElementById('systemAlertBox');
+    const messageEl = document.getElementById('systemAlertMessage');
+    const detailWrapper = document.getElementById('systemAlertDetailWrapper');
+    const detailEl = document.getElementById('systemAlertDetail');
+    const btnAction = document.getElementById('btnActionSystemAlert');
+    const actionTextEl = document.getElementById('systemAlertActionText');
+    const btnClose = document.getElementById('btnCloseSystemAlert');
+    const btnDismiss = document.getElementById('btnDismissSystemAlert');
+
+    if (titleText) titleText.textContent = title || 'Thông Báo Hệ Thống';
+    if (messageEl) messageEl.innerHTML = message || '';
+
+    // Color theme styling
+    if (type === 'error') {
+      if (titleEl) titleEl.style.color = '#e11d48';
+      if (icon) icon.className = 'fa-solid fa-triangle-exclamation';
+      if (header) {
+        header.style.background = 'linear-gradient(to right, #fff1f2, #ffffff)';
+        header.style.borderBottom = '1px solid #ffe4e6';
+      }
+      if (box) {
+        box.style.background = '#fff1f2';
+        box.style.border = '1px solid #ffe4e6';
+      }
+      if (messageEl) messageEl.style.color = '#be123c';
+    } else if (type === 'warning') {
+      if (titleEl) titleEl.style.color = '#d97706';
+      if (icon) icon.className = 'fa-solid fa-circle-exclamation';
+      if (header) {
+        header.style.background = 'linear-gradient(to right, #fffbeb, #ffffff)';
+        header.style.borderBottom = '1px solid #fef3c7';
+      }
+      if (box) {
+        box.style.background = '#fffbeb';
+        box.style.border = '1px solid #fef3c7';
+      }
+      if (messageEl) messageEl.style.color = '#92400e';
+    } else {
+      if (titleEl) titleEl.style.color = '#4f46e5';
+      if (icon) icon.className = 'fa-solid fa-circle-info';
+      if (header) {
+        header.style.background = 'linear-gradient(to right, #eef2ff, #ffffff)';
+        header.style.borderBottom = '1px solid #e0e7ff';
+      }
+      if (box) {
+        box.style.background = '#eef2ff';
+        box.style.border = '1px solid #e0e7ff';
+      }
+      if (messageEl) messageEl.style.color = '#3730a3';
+    }
+
+    if (errorDetail && detailWrapper && detailEl) {
+      detailEl.textContent = errorDetail;
+      detailWrapper.style.display = 'block';
+    } else if (detailWrapper) {
+      detailWrapper.style.display = 'none';
+    }
+
+    if (actionUrl && btnAction && actionTextEl) {
+      btnAction.href = actionUrl;
+      btnAction.style.display = 'inline-flex';
+      actionTextEl.textContent = actionText || 'Xử lý ngay';
+    } else if (btnAction) {
+      btnAction.style.display = 'none';
+    }
+
+    const closeModal = () => {
+      modal.style.display = 'none';
+    };
+
+    if (btnClose) btnClose.onclick = closeModal;
+    if (btnDismiss) btnDismiss.onclick = closeModal;
+
+    modal.style.display = 'flex';
+  }
+
+  // Proactive storage health check to warn admin if billing is blocked
+  let storageHealthChecked = false;
+  function checkStorageHealth(force = false) {
+    if ((storageHealthChecked && !force) || !useFirebase || !reports || reports.length === 0) return;
+    const reportWithImage = reports.find(r => r.images && r.images.length > 0 && r.images[0].startsWith('http'));
+    if (!reportWithImage) return;
+
+    storageHealthChecked = true;
+    const testUrl = reportWithImage.images[0];
+    fetch(testUrl, { method: 'GET' })
+      .then(res => {
+        if (res.status === 402) {
+          showSystemAlertModal({
+            title: 'Cảnh Báo Lỗi Thanh Toán Firebase (HTTP 402)',
+            message: 'Phát hiện sự cố lưu trữ: Tài khoản thanh toán Google Cloud / Firebase Billing đang bị tạm khóa hoặc chưa hoàn tất đối soát (HTTP 402).<br><br>Hình ảnh minh chứng tạm thời bị Google chặn hiển thị và không thể đính kèm khi xuất báo cáo. Bạn vui lòng kiểm tra lại Billing Account trên Google Cloud.',
+            errorDetail: 'HTTP 402: The billing account for the owning project is disabled in state delinquent/closed.',
+            actionText: 'Mở Google Cloud Billing',
+            actionUrl: 'https://console.cloud.google.com/billing',
+            type: 'error'
+          });
+        }
+      })
+      .catch(() => {});
+  }
+
   // ----------------------------------------------------
   // 7. Form Submission & Confetti Animation
   // ----------------------------------------------------
@@ -1440,6 +1551,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // Load and render data
       renderReportsTable();
       renderProgramCrudList();
+      checkStorageHealth(true);
       
       showToast('Đăng nhập thành công', 'Chào mừng bạn đến với Cổng Quản trị.', 'success');
     } else {
@@ -2601,6 +2713,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Helper to pre-load and convert data or HTTP URLs into clean base64 string for exporting
+  let lastImageExportError = null;
+
   function cleanImageForExport(imgSrc) {
     if (!imgSrc) return Promise.resolve({ success: false });
 
@@ -2631,6 +2745,9 @@ document.addEventListener('DOMContentLoaded', () => {
         return fetch(url, { signal: controller.signal })
           .then(res => {
             clearTimeout(timeoutId);
+            if (res.status === 402) {
+              lastImageExportError = { code: 402, message: 'Google Cloud Billing bị lỗi hoặc tạm khóa (402 Payment Required).' };
+            }
             if (!res.ok) throw new Error("Status " + res.status);
             return res.blob().then(blob => new Promise((resolve, reject) => {
               const reader = new FileReader();
@@ -2931,6 +3048,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Excel XLSX Export with Images using ExcelJS (Only for Trưng bày / Event)
   if (btnExportExcel) {
     btnExportExcel.addEventListener('click', () => {
+      lastImageExportError = null;
       const eventReports = reports.filter(r => r.activityType !== 'PS');
       if (eventReports.length === 0) {
         showToast('Không có dữ liệu', 'Không có báo cáo Trưng bày / Event nào để xuất.', 'warning');
@@ -3054,10 +3172,27 @@ document.addEventListener('DOMContentLoaded', () => {
           link.click();
           document.body.removeChild(link);
           showToast('Xuất Excel thành công', 'File Excel báo cáo Trưng bày / Event đã tải xuống.', 'success');
+
+          if (lastImageExportError && lastImageExportError.code === 402) {
+            showSystemAlertModal({
+              title: 'Cảnh Báo Lỗi Thanh Toán Firebase (HTTP 402)',
+              message: 'Tệp Excel đã được tải xuống nhưng <b>hình ảnh minh chứng không thể nhúng</b> vào bảng tính do tài khoản Google Cloud / Firebase Billing bị tạm khóa hoặc nợ phí (HTTP 402).<br><br>Vui lòng nạp tiền hoặc kích hoạt lại Billing Account trên Google Cloud.',
+              errorDetail: 'HTTP 402: The billing account for the owning project is disabled in state delinquent/closed.',
+              actionText: 'Mở Google Cloud Billing',
+              actionUrl: 'https://console.cloud.google.com/billing',
+              type: 'error'
+            });
+          }
         })
         .catch(err => {
           console.error("ExcelJS export error:", err);
           showToast('Lỗi xuất Excel', 'Không thể tạo file Excel.', 'error');
+          showSystemAlertModal({
+            title: 'Lỗi Xuất File Excel',
+            message: 'Đã xảy ra lỗi trong quá trình tạo file Excel báo cáo. Vui lòng kiểm tra lại kết nối mạng hoặc thử lại.',
+            errorDetail: (err && err.message) ? err.message : String(err),
+            type: 'error'
+          });
         });
     });
   }
@@ -3173,6 +3308,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // PowerPoint Slide Export
   btnExportPPT.addEventListener('click', () => {
+    lastImageExportError = null;
     const eventReports = reports.filter(r => r.activityType !== 'PS');
     if (eventReports.length === 0) {
       showToast('Không có dữ liệu', 'Không có báo cáo Trưng bày / Event nào để xuất PowerPoint.', 'warning');
@@ -3277,11 +3413,28 @@ document.addEventListener('DOMContentLoaded', () => {
         return pptx.writeFile({ fileName: `Diageo_Activation_Report_Export_${Date.now()}.pptx` });
       })
       .then(() => {
-        showToast('Xuat PowerPoint thanh cong', 'File bao cao .pptx da duoc tai xuong.', 'success');
+        showToast('Xuất PowerPoint thành công', 'File báo cáo .pptx đã được tải xuống.', 'success');
+
+        if (lastImageExportError && lastImageExportError.code === 402) {
+          showSystemAlertModal({
+            title: 'Cảnh Báo Lỗi Thanh Toán Firebase (HTTP 402)',
+            message: 'Tệp PowerPoint đã được tạo nhưng <b>hình ảnh minh chứng không thể tải vào slide</b> do tài khoản Google Cloud / Firebase Billing bị tạm khóa hoặc chưa hoàn tất đối soát (HTTP 402).<br><br>Vui lòng kiểm tra lại trạng thái Billing Account trên Google Cloud.',
+            errorDetail: 'HTTP 402: The billing account for the owning project is disabled in state delinquent/closed.',
+            actionText: 'Mở Google Cloud Billing',
+            actionUrl: 'https://console.cloud.google.com/billing',
+            type: 'error'
+          });
+        }
       })
       .catch(err => {
         console.error("PPTX export error:", err);
-        showToast('Loi xuat PPTX', 'Khong the tao file slide bao cao.', 'error');
+        showToast('Lỗi xuất PPTX', 'Không thể tạo file slide báo cáo.', 'error');
+        showSystemAlertModal({
+          title: 'Lỗi Xuất Slide PowerPoint',
+          message: 'Đã xảy ra sự cố trong quá trình kết xuất slide PowerPoint. Vui lòng thử lại hoặc kiểm tra kết nối mạng.',
+          errorDetail: (err && err.message) ? err.message : String(err),
+          type: 'error'
+        });
       });
   });
 
@@ -4787,6 +4940,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.classList.add('admin-mode');
         renderReportsTable();
         renderProgramCrudList();
+        checkStorageHealth();
       } else {
         if (adminLoginModal) adminLoginModal.classList.add('active');
         if (btnCloseLogin) btnCloseLogin.style.display = 'none';
