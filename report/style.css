@@ -20,3 +20,26 @@
 header{height:108px}.report-logo{width:76px;height:88px;object-fit:contain;display:block}.brand{letter-spacing:1px;gap:18px}@media(max-width:650px){header{height:94px}.report-logo{width:58px;height:74px}.brand{gap:10px;font-size:.8rem;letter-spacing:.4px}}
 
 .ps-month-group>summary{cursor:pointer;list-style:none}.ps-month-group>summary::-webkit-details-marker{display:none}.ps-month-group>summary>span:first-child{position:relative}.ps-month-group>summary>span:first-child:before{content:'▸';position:absolute;left:18px;color:#1c796f}.ps-month-group[open]>summary>span:first-child:before{content:'▾'}.ps-month-group>summary:hover{background:#edf6f4}.ps-month-group>summary:focus-visible{outline:3px solid #9ad6ce;outline-offset:-3px}.ps-pivot-day{display:grid;grid-template-columns:1.2fr 1.2fr 1fr 1fr .65fr;gap:18px;padding:14px 16px;align-items:center;border-bottom:1px solid #e5edef;font-size:.875rem;background:#fff;color:#536f7c}.ps-pivot-day>span:first-child{padding-left:54px}.ps-pivot-day>span:nth-child(n+3){text-align:right}.ps-no-days{padding-left:52px}
+
+/* Outlet Details Tree Table */
+.panelhead-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.detail-actions{display:flex;gap:8px;align-items:center}
+.btn-subtle{background:#edf3f5;color:#314e5d;border:1px solid #d4e0e6;border-radius:6px;padding:8px 13px;font-size:0.78rem;font-weight:600;cursor:pointer;transition:all 0.15s ease}
+.btn-subtle:hover{background:#deebf0;color:#182e3b;border-color:#bdced7}
+.outlet-row{cursor:pointer;transition:background 0.15s ease}
+.outlet-row:hover{background:#f3f8f9!important}
+.outlet-row.is-open{background:#eef6f5}
+.outlet-cell-wrap{display:flex;align-items:flex-start;gap:6px}
+.tree-toggle-btn{background:none;border:none;color:#1c796f;font-size:0.95rem;font-weight:700;cursor:pointer;padding:2px 4px;margin-right:2px;line-height:1;display:inline-flex;align-items:center;justify-content:center;transition:transform 0.15s ease;user-select:none}
+.tree-toggle-btn:hover{color:#11534c}
+.tree-toggle-btn.is-open{transform:rotate(90deg);color:#11534c}
+.month-row{background:#f8fbfc;border-left:3px solid #1c796f;transition:background 0.15s ease;cursor:pointer}
+.month-row:hover{background:#eff6f8!important}
+.month-cell-wrap{display:flex;align-items:center;gap:6px;padding-left:24px}
+.month-badge{display:inline-block;font-weight:700;color:#17675f;font-size:0.8125rem;letter-spacing:0.5px}
+.day-row{background:#ffffff;border-left:3px solid #9ad6ce;font-size:0.8125rem;color:#536f7c}
+.day-row:hover{background:#fbfdfd!important}
+.day-cell-wrap{display:flex;align-items:center;gap:8px;padding-left:48px}
+.day-dot{color:#1c796f;font-weight:700}
+.day-date{font-weight:600;color:#243d4e}
+
