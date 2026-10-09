@@ -50,3 +50,6 @@ header{height:108px}.report-logo{width:76px;height:88px;object-fit:contain;displ
 .detail td.contract-date,.detail th:nth-child(4){text-align:left;white-space:nowrap}
 .detail .contract-running{font-weight:600;color:#17675f;white-space:nowrap}
 #runtime-note{font-size:.75rem}
+
+/* Use the available viewport width for the report instead of a 1500px cap. */
+main{max-width:none;width:100%;padding-inline:clamp(16px,2vw,32px)}
