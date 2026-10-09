@@ -63,3 +63,10 @@ main{max-width:none;width:100%;padding-inline:clamp(16px,2vw,32px)}
 .level-summary tbody th{background:transparent;font-weight:600;color:#182a39}
 .level-summary tfoot th,.level-summary tfoot td{background:#eaf4f2;font-weight:700;border-top:2px solid #c9dfda}
 @media(max-width:650px){.level-summary .panelhead{padding:18px}}
+
+.level-group{cursor:pointer}
+.level-toggle{background:transparent;color:#17675f;padding:4px 0;font-size:inherit;white-space:nowrap}
+.level-summary .level-outlet th,.level-summary .level-outlet td{background:#f8fbfc;font-weight:400;border-top:0}
+.level-summary .level-outlet th{padding-left:42px;min-width:220px}
+.level-outlet-name{display:block;font-weight:600}
+.level-outlet small{display:block;color:#7a8b98;font-size:.75rem;margin-top:5px}

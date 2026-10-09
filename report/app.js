@@ -4,7 +4,7 @@ import {refreshPs,renderPs,psSnapshot} from './ps-ui.mjs';
 import {model,report} from './model.mjs';
 const SHEET='1RzhVHTJQOI6f1Iv1VL7-_wt6oB7TksVANdEcEIzcbSI';
 const $=id=>document.getElementById(id),fmt=(n,d=0)=>new Intl.NumberFormat('en-GB',{maximumFractionDigits:d}).format(n),escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let data,lastSuccess;let seq=0;const expandedOutlets=new Set,expandedMonths=new Set;
+let data,lastSuccess;let seq=0;const expandedOutlets=new Set,expandedMonths=new Set,expandedLevels=new Set;
 $('source').href=`https://docs.google.com/spreadsheets/d/${SHEET}/edit`;
 $('unit').value='million';
 function readSheet(name){return new Promise((resolve,reject)=>{const cb='sheetCallback'+(++seq),script=document.createElement('script');let done=false;const timer=setTimeout(()=>finish(Error('Google Sheets timed out. Please refresh and try again.')),25000);function finish(err,result){if(done)return;done=true;clearTimeout(timer);script.remove();delete window[cb];err?reject(err):resolve(result)}window[cb]=r=>{if(r.status!=='ok'||!r.table)return finish(Error('Unable to read sheet '+name+'. Check Google Sheets viewing permissions.'));finish(null,[r.table.cols.map(c=>c.label),...r.table.rows.map(r=>r.c.map(c=>c?.v??null))])};script.onerror=()=>finish(Error('Unable to connect to Google Sheets. Check your connection and sheet permissions.'));script.src=`https://docs.google.com/spreadsheets/d/${SHEET}/gviz/tq?sheet=${encodeURIComponent(name)}&headers=1&tqx=${encodeURIComponent('out:json;responseHandler:'+cb)}&_=${Date.now()}`;document.head.append(script)})}
@@ -15,11 +15,35 @@ function renderLevels(r){
  const summary=summarizeLevels(r.rows);
  const money=value=>value===null?'—':fmt(value);
  const percent=value=>value===null?'—':fmt(value*100,1)+'%';
- const row=g=>`<tr><th scope="row">${escape(g.level)}</th><td>${money(g.totalTarget)}</td><td>${money(g.cumulativeTarget)}</td><td><b>${money(g.revenue)}</b></td><td>${percent(g.cumulativeAchievement)}</td><td>${percent(g.totalAchievement)}</td></tr>`;
- $('level-rows').innerHTML=summary.levels.length?summary.levels.map(row).join(''):'<tr><td colspan="6" class="empty">No outlets match the selected filters.</td></tr>';
- $('level-total').innerHTML=summary.levels.length?row(summary.total):'';
- $('level-note').textContent=`${r.startPeriod} → ${r.endPeriod} · Same filters as Outlet details · Achievement = total revenue / total target per Level`;
+ const cells=g=>`<td>${fmt(g.outletCount)}</td><td>${money(g.totalTarget)}</td><td>${money(g.cumulativeTarget)}</td><td><b>${money(g.revenue)}</b></td><td>${percent(g.cumulativeAchievement)}</td><td>${percent(g.totalAchievement)}</td>`;
+ const groupRow=(g,key,outlets)=>{
+  const open=expandedLevels.has(key);
+  const heading=`<tr class="level-group" data-level-group="${escape(key)}"><th scope="row"><button type="button" class="level-toggle" data-level-toggle="${escape(key)}" aria-expanded="${open}" aria-label="${escape((open?'Thu gọn':'Xem OL')+' '+g.level)}"><span aria-hidden="true">${open?'▾':'▸'}</span> ${escape(g.level)}</button></th>${cells(g)}</tr>`;
+  if(!open)return heading;
+  return heading+outlets.slice().sort((a,b)=>b.amount-a.amount).map(o=>{
+   const values=summarizeLevels([o]).total;
+   return `<tr class="level-outlet"><th scope="row"><span class="level-outlet-name">${escape(o.name)}</span><small>${escape(o.code)} · Level ${escape(o.level)}</small></th>${cells(values)}</tr>`;
+  }).join('');
+ };
+ $('level-rows').innerHTML=summary.levels.length?summary.levels.map(g=>groupRow(g,'level:'+g.level,r.rows.filter(o=>(String(o.level??'').trim().toUpperCase()||'—')===g.level))).join(''):'<tr><td colspan="7" class="empty">No outlets match the selected filters.</td></tr>';
+ $('level-total').innerHTML=summary.levels.length?groupRow(summary.total,'total',r.rows):'';
+ $('level-note').textContent=`${r.startPeriod} → ${r.endPeriod} · Bấm Level hoặc Total để xem chi tiết OL · Áp dụng bộ lọc hiện tại`;
 }
+function toggleLevelDetails(event){
+ const group=event.target.closest('.level-group');
+ if(!group||!data)return;
+ const key=group.dataset.levelGroup;
+ const open=!expandedLevels.has(key);
+ if(open)expandedLevels.add(key);else expandedLevels.delete(key);
+ renderLevels(report(data,filters()));
+ // Restore keyboard focus after replacing the table rows.
+ if(event.target.closest('button')){
+  const button=[...document.querySelectorAll('[data-level-toggle]')].find(el=>el.dataset.levelToggle===key);
+  button?.focus({preventScroll:true});
+ }
+}
+$('level-rows').addEventListener('click',toggleLevelDetails);
+$('level-total').addEventListener('click',toggleLevelDetails);
 function render(){if(!data)return;renderPs(data,filters());const f=filters(),r=report(data,f);renderLevels(r);const cumulative=f.mode==='cumulative';$('periodtitle').textContent='REPORT ON TRADE PROGRAM';
  const cards=[['Total outlets',fmt(r.totalOutlets),'Participating outlets'],['Total phased target',fmt(r.targetTotal,2),'Million VND · full program'],['Cumulative phased target',fmt(r.plan,2),`Million VND · ${r.startPeriod} → ${f.period}`],['Cumulative purchase revenue',fmt(r.amount/1e6),'Price 110'],['% Total achievement',r.targetTotal>0?fmt(r.amount/1e6/r.targetTotal*100,1)+'%':'—','Cumulative actual / total phased target'],['% Cumulative achievement',r.achievement===null?'—':fmt(r.achievement*100,1)+'%','Cumulative actual / cumulative target']];
  $('kpis').innerHTML=cards.map(([label,value,note])=>`<article><span>${label}</span><strong>${value}</strong>${note?`<small>${note}</small>`:''}</article>`).join('');
@@ -61,7 +85,7 @@ function render(){if(!data)return;renderPs(data,filters());const f=filters(),r=r
  }
  $('quality').textContent=`Loaded ${data.outlets.filter(o=>o.onList).length} outlets from On_list and ${data.sourceRows} purchase rows. ${data.invalidPeriods} rows excluded due to missing or invalid fiscal periods; ${data.missingCodes} purchase rows have no outlet code. Source rows are summed without automatic deduplication.`;
 }
-async function refresh(){if($('refresh').disabled)return;refreshPs(()=>[data,filters()]);$('refresh').disabled=true;$('refresh').textContent='Refreshing…';try{const [p,b]=await Promise.all([readSheet('On_list'),readSheet('ONT mua hàng')]);const next=model(p,b);if(!next.periods.length)throw Error('No fiscal periods found in the data.');data=next;options('year',[...new Set(data.periods.map(p=>p.split('-')[0]))]);const latest=data.purchases.map(p=>p.period).sort().at(-1)||data.periods[0];$('year').value=latest.split('-')[0];periods();$('period').value=latest;options('region',[...new Set(data.outlets.map(o=>o.region))].sort(),'All regions');options('fsm',[...new Set(data.outlets.map(o=>o.fsm))].sort(),'All FSMs');options('level',[...new Set(data.outlets.filter(o=>o.onList).map(o=>o.level))].sort(),'All levels');const prevOutlet=$('outlet').value;$('outlet').innerHTML='<option value="">All outlets</option>'+data.outlets.slice().sort((a,b)=>a.name.localeCompare(b.name,'vi')).map(o=>`<option value="${escape(o.key)}">${escape(o.name)}</option>`).join('');if(data.outlets.some(o=>o.key===prevOutlet))$('outlet').value=prevOutlet;lastSuccess=new Date();$('synctime').textContent='Updated '+lastSuccess.toLocaleString('en-GB');$('error').hidden=true;render()}catch(e){$('error').hidden=false;$('error').textContent=e.message+(data?' Showing data from the last successful refresh.':' No data is available for this report.');$('synctime').textContent=lastSuccess?'Previous data · '+lastSuccess.toLocaleString('en-GB'):'Not connected';if(!data){$('level-rows').innerHTML='<tr><td colspan="6" class="empty">Unable to load data. Select Refresh data to retry.</td></tr>';$('level-total').innerHTML='';}if(!data)$('rows').innerHTML='<tr><td colspan="11" class="empty">Unable to load data. Select Refresh data to retry.</td></tr>'}finally{$('refresh').disabled=false;$('refresh').textContent='↻ Refresh data'}}
+async function refresh(){if($('refresh').disabled)return;refreshPs(()=>[data,filters()]);$('refresh').disabled=true;$('refresh').textContent='Refreshing…';try{const [p,b]=await Promise.all([readSheet('On_list'),readSheet('ONT mua hàng')]);const next=model(p,b);if(!next.periods.length)throw Error('No fiscal periods found in the data.');data=next;options('year',[...new Set(data.periods.map(p=>p.split('-')[0]))]);const latest=data.purchases.map(p=>p.period).sort().at(-1)||data.periods[0];$('year').value=latest.split('-')[0];periods();$('period').value=latest;options('region',[...new Set(data.outlets.map(o=>o.region))].sort(),'All regions');options('fsm',[...new Set(data.outlets.map(o=>o.fsm))].sort(),'All FSMs');options('level',[...new Set(data.outlets.filter(o=>o.onList).map(o=>o.level))].sort(),'All levels');const prevOutlet=$('outlet').value;$('outlet').innerHTML='<option value="">All outlets</option>'+data.outlets.slice().sort((a,b)=>a.name.localeCompare(b.name,'vi')).map(o=>`<option value="${escape(o.key)}">${escape(o.name)}</option>`).join('');if(data.outlets.some(o=>o.key===prevOutlet))$('outlet').value=prevOutlet;lastSuccess=new Date();$('synctime').textContent='Updated '+lastSuccess.toLocaleString('en-GB');$('error').hidden=true;render()}catch(e){$('error').hidden=false;$('error').textContent=e.message+(data?' Showing data from the last successful refresh.':' No data is available for this report.');$('synctime').textContent=lastSuccess?'Previous data · '+lastSuccess.toLocaleString('en-GB'):'Not connected';if(!data){$('level-rows').innerHTML='<tr><td colspan="7" class="empty">Unable to load data. Select Refresh data to retry.</td></tr>';$('level-total').innerHTML='';}if(!data)$('rows').innerHTML='<tr><td colspan="11" class="empty">Unable to load data. Select Refresh data to retry.</td></tr>'}finally{$('refresh').disabled=false;$('refresh').textContent='↻ Refresh data'}}
 $('refresh').addEventListener('click',refresh);$('year').addEventListener('change',()=>{periods();render()});['period','region','fsm','outlet','level','price','unit'].forEach(id=>$(id).addEventListener('change',render));$('search').addEventListener('input',render);
 $('rows').addEventListener('click',e=>{
  const dayBtn=e.target.closest('.day-toggle');

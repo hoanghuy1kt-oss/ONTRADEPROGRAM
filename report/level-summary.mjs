@@ -1,15 +1,17 @@
 // Source report targets are million VND; actual revenue is already VND.
 export function summarizeLevels(rows) {
   const groups = new Map();
-  const empty = level => ({level, totalTarget: 0, cumulativeTarget: 0, revenue: 0, hasTotal: false, hasPlan: false});
+  const empty = level => ({level, outletCount: 0, totalTarget: 0, cumulativeTarget: 0, revenue: 0, hasTotal: false, hasPlan: false});
   const total = empty('Total');
   const add = (group, row) => {
+    group.outletCount += 1;
     if (row.onList) { group.totalTarget += row.targetTotal * 1e6; group.hasTotal = true; }
     if (row.plan !== null && row.plan !== undefined) { group.cumulativeTarget += row.plan * 1e6; group.hasPlan = true; }
     group.revenue += row.amount;
   };
   const finish = group => ({
     level: group.level,
+    outletCount: group.outletCount,
     totalTarget: group.hasTotal ? group.totalTarget : null,
     cumulativeTarget: group.hasPlan ? group.cumulativeTarget : null,
     revenue: group.revenue,

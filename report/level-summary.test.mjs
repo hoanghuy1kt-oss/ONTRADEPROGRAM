@@ -21,3 +21,9 @@ assert.equal(summarizeLevels(rows.filter(r=>r.level==='A')).total.revenue,450000
 assert.deepEqual(summarizeLevels([]).levels,[]);
 assert.equal(summarizeLevels([]).total.totalAchievement,null);
 console.log('Level summary assertions passed: weighted ratios, VND conversion, zero targets, missing Level, totals and filtered rows.');
+
+assert.deepEqual(summary.levels.map(r=>r.outletCount),[2,1,1]);
+assert.equal(summary.total.outletCount,4);
+assert.equal(summarizeLevels(rows.filter(r=>r.level==='A')).total.outletCount,2);
+assert.equal(summarizeLevels([]).total.outletCount,0);
+console.log('Outlet counts passed: each Level, total, filters and empty data.');
