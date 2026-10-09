@@ -43,3 +43,10 @@ header{height:108px}.report-logo{width:76px;height:88px;object-fit:contain;displ
 .day-dot{color:#1c796f;font-weight:700}
 .day-date{font-weight:600;color:#243d4e}
 
+
+/* Contract dates and elapsed duration in Outlet details. */
+.detail table{min-width:1650px}
+.detail td:nth-child(n+6):nth-child(-n+10),.detail th:nth-child(n+6):nth-child(-n+10){text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.detail td.contract-date,.detail th:nth-child(4){text-align:left;white-space:nowrap}
+.detail .contract-running{font-weight:600;color:#17675f;white-space:nowrap}
+#runtime-note{font-size:.75rem}
