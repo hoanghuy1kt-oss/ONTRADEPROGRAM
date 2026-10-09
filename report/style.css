@@ -53,3 +53,13 @@ header{height:108px}.report-logo{width:76px;height:88px;object-fit:contain;displ
 
 /* Use the available viewport width for the report instead of a 1500px cap. */
 main{max-width:none;width:100%;padding-inline:clamp(16px,2vw,32px)}
+
+/* Level totals share report filters and keep numeric columns aligned. */
+.level-summary{padding:0;overflow:hidden;margin:22px 0}
+.level-summary .panelhead{padding:24px}
+.level-summary p{margin:6px 0 0;font-size:.8125rem}
+.level-summary table{min-width:1000px}
+.level-summary td:not(.empty),.level-summary thead th:not(:first-child){text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.level-summary tbody th{background:transparent;font-weight:600;color:#182a39}
+.level-summary tfoot th,.level-summary tfoot td{background:#eaf4f2;font-weight:700;border-top:2px solid #c9dfda}
+@media(max-width:650px){.level-summary .panelhead{padding:18px}}
