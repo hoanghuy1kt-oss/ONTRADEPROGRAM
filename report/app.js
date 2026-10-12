@@ -23,7 +23,7 @@ function renderLevels(r){
  const isUsd=curr==='USD';
  const money=value=>{if(value===null)return '—';const v=isUsd?Math.round(value/fxRate):value;return fmt(v);};
  const percent=value=>value===null?'—':fmt(value*100,1)+'%';
- const cells=g=>`<td>${fmt(g.outletCount)}</td><td>${money(g.totalTarget)}</td><td>${money(g.cumulativeTarget)}</td><td><b>${money(g.revenue)}</b></td><td>${percent(g.cumulativeAchievement)}</td><td>${percent(g.totalAchievement)}</td>`;
+ const cells=g=>`<td>${fmt(g.outletCount)}</td><td>${escape(g.sopT1||'—')}</td><td>${money(g.totalTarget)}</td><td>${money(g.cumulativeTarget)}</td><td><b>${money(g.revenue)}</b></td><td><b>${money(g.restockAmount)}</b></td><td>${percent(g.cumulativeAchievement)}</td><td>${percent(g.totalAchievement)}</td>`;
  const groupRow=(g,key,outlets)=>{
   const open=expandedLevels.has(key);
   const heading=`<tr class="level-group" data-level-group="${escape(key)}"><th scope="row"><button type="button" class="level-toggle" data-level-toggle="${escape(key)}" aria-expanded="${open}" aria-label="${escape((open?'Thu gọn':'Xem OL')+' '+g.level)}"><span aria-hidden="true">${open?'▾':'▸'}</span> ${escape(g.level)}</button></th>${cells(g)}</tr>`;
@@ -33,12 +33,13 @@ function renderLevels(r){
    return `<tr class="level-outlet"><th scope="row"><span class="level-outlet-name">${escape(o.name)}</span><small>${escape(o.code)} · Level ${escape(o.level)}</small></th>${cells(values)}</tr>`;
   }).join('');
  };
- $('level-rows').innerHTML=summary.levels.length?summary.levels.map(g=>groupRow(g,'level:'+g.level,r.rows.filter(o=>(String(o.level??'').trim().toUpperCase()||'—')===g.level))).join(''):'<tr><td colspan="7" class="empty">No outlets match the selected filters.</td></tr>';
+ $('level-rows').innerHTML=summary.levels.length?summary.levels.map(g=>groupRow(g,'level:'+g.level,r.rows.filter(o=>(String(o.level??'').trim().toUpperCase()||'—')===g.level))).join(''):'<tr><td colspan="9" class="empty">No outlets match the selected filters.</td></tr>';
  $('level-total').innerHTML=summary.levels.length?groupRow(summary.total,'total',r.rows):'';
  $('level-note').textContent=`${r.startPeriod} → ${r.endPeriod} · Bấm Level hoặc Total để xem chi tiết OL · Áp dụng bộ lọc hiện tại`;
  if($('thLevelTotalTarget'))$('thLevelTotalTarget').textContent=`Total target (${curr})`;
  if($('thLevelCumTarget'))$('thLevelCumTarget').textContent=`Cumulative target (${curr})`;
  if($('thLevelRevenue'))$('thLevelRevenue').textContent=`Revenue (${curr})`;
+ if($('thLevelRestock'))$('thLevelRestock').textContent=`Restock (110) (${curr})`;
 }
 function toggleLevelDetails(event){
  const group=event.target.closest('.level-group');
@@ -113,11 +114,12 @@ function render(){
  if($('thOutletTotalTarget'))$('thOutletTotalTarget').textContent=`Total target (${curr})`;
  if($('thOutletCumTarget'))$('thOutletCumTarget').textContent=`Cumulative target (${curr})`;
  if($('thOutletRevenue'))$('thOutletRevenue').textContent=`Revenue (${curr})`;
+ if($('thOutletRestock'))$('thOutletRestock').textContent=`Restock (110) (${curr})`;
 
  const cvt=v=>v===null||v===undefined?null:(isUsd?Math.round(v/fxRate):v);
  const sortedRows=r.rows.sort((a,b)=>b.amount-a.amount);
  if(!sortedRows.length){
-  $('rows').innerHTML='<tr><td colspan="11" class="empty">No outlets match the selected filters.</td></tr>';
+  $('rows').innerHTML='<tr><td colspan="13" class="empty">No outlets match the selected filters.</td></tr>';
  }else{
   const html=[];
   sortedRows.forEach(o=>{
@@ -127,7 +129,8 @@ function render(){
    const totalTargetStr=o.onList?fmt(cvt(o.targetTotal*1e6)):'—';
    const cumTargetStr=o.plan===null?'—':fmt(cvt(o.plan*1e6));
    const revenueStr=fmt(cvt(o.amount));
-   html.push(`<tr class="outlet-row ${isOpen?'is-open':''}" data-outlet-id="${outletId}" data-outlet-key="${escape(o.key)}"><td><div class="outlet-cell-wrap">${hasMonths?`<button type="button" class="tree-toggle-btn ${isOpen?'is-open':''}" data-target-outlet="${outletId}" title="Xem chi tiết từng tháng">▸</button>`:'<span style="width:16px;display:inline-block"></span>'}<div><b>${escape(o.name)}</b><small>${escape(o.code)}</small></div></div></td><td>${escape(o.region)}<small>${escape(o.fsm)}</small></td><td>${escape(o.level)}</td><td class="contract-date">${displayContractDate(o.startDate)}</td><td class="contract-running" title="${escape('End Date: '+displayContractDate(o.endDate)+' · As of: '+displayContractDate(r.asOf))}">${o.runningTime===null?'—':fmt(o.runningTime,1)+'%'}</td><td>${totalTargetStr}</td><td>${cumTargetStr}</td><td><b>${revenueStr}</b></td><td>${o.achievement===null?'—':fmt(o.achievement*100,1)+'%'}</td><td>${o.totalAchievement===null?'—':fmt(o.totalAchievement*100,1)+'%'}</td><td><span class="pill ${o.plan===null?'':o.transactions?'yes':'wait'}">${o.plan===null?'Outside plan':o.transactions?'Purchased':'No purchases'}</span></td></tr>`);
+   const restockStr=fmt(cvt(o.restockAmount||0));
+   html.push(`<tr class="outlet-row ${isOpen?'is-open':''}" data-outlet-id="${outletId}" data-outlet-key="${escape(o.key)}"><td><div class="outlet-cell-wrap">${hasMonths?`<button type="button" class="tree-toggle-btn ${isOpen?'is-open':''}" data-target-outlet="${outletId}" title="Xem chi tiết từng tháng">▸</button>`:'<span style="width:16px;display:inline-block"></span>'}<div><b>${escape(o.name)}</b><small>${escape(o.code)}</small></div></div></td><td>${escape(o.region)}<small>${escape(o.fsm)}</small></td><td>${escape(o.level)}</td><td>${escape(o.sopT1||'—')}</td><td class="contract-date">${displayContractDate(o.startDate)}</td><td class="contract-running" title="${escape('End Date: '+displayContractDate(o.endDate)+' · As of: '+displayContractDate(r.asOf))}">${o.runningTime===null?'—':fmt(o.runningTime,1)+'%'}</td><td>${totalTargetStr}</td><td>${cumTargetStr}</td><td><b>${revenueStr}</b></td><td><b>${restockStr}</b></td><td>${o.achievement===null?'—':fmt(o.achievement*100,1)+'%'}</td><td>${o.totalAchievement===null?'—':fmt(o.totalAchievement*100,1)+'%'}</td><td><span class="pill ${o.plan===null?'':o.transactions?'yes':'wait'}">${o.plan===null?'Outside plan':o.transactions?'Purchased':'No purchases'}</span></td></tr>`);
    if(hasMonths){
     o.months.forEach(m=>{
      const monthKey=o.key+'_'+m.period;
@@ -136,11 +139,12 @@ function render(){
      const hasDays=m.days&&m.days.length>0;
      const mTargetStr=m.target===null?'—':fmt(cvt(m.target));
      const mRevenueStr=fmt(cvt(m.amount));
-     html.push(`<tr class="child-row month-row ${outletId}" data-month-id="${monthId}" data-month-key="${escape(monthKey)}" style="display:${isOpen?'table-row':'none'}"><td><div class="month-cell-wrap">${hasDays?`<button type="button" class="tree-toggle-btn day-toggle ${isMonthOpen?'is-open':''}" data-target-month="${monthId}" title="Xem chi tiết theo ngày">▸</button>`:'<span style="width:14px;display:inline-block;color:#1c796f;font-weight:700">•</span>'}<span class="month-badge">${escape(m.period)}</span></div></td><td><small>Tháng ${escape(m.period)}</small></td><td style="color:#8ba0ad">—</td><td class="contract-date">—</td><td class="contract-running">—</td><td style="color:#8ba0ad">—</td><td>${mTargetStr}</td><td><b>${mRevenueStr}</b></td><td>${m.achievement===null?'—':fmt(m.achievement*100,1)+'%'}</td><td>${m.totalAchievement===null?'—':fmt(m.totalAchievement*100,1)+'%'}</td><td><span class="pill ${m.target===null?'':m.transactions?'yes':'wait'}">${m.target===null?'Outside plan':m.transactions?'Purchased':'No purchases'}</span></td></tr>`);
+     const mRestockStr=fmt(cvt(m.restockAmount||0));
+     html.push(`<tr class="child-row month-row ${outletId}" data-month-id="${monthId}" data-month-key="${escape(monthKey)}" style="display:${isOpen?'table-row':'none'}"><td><div class="month-cell-wrap">${hasDays?`<button type="button" class="tree-toggle-btn day-toggle ${isMonthOpen?'is-open':''}" data-target-month="${monthId}" title="Xem chi tiết theo ngày">▸</button>`:'<span style="width:14px;display:inline-block;color:#1c796f;font-weight:700">•</span>'}<span class="month-badge">${escape(m.period)}</span></div></td><td><small>Tháng ${escape(m.period)}</small></td><td style="color:#8ba0ad">—</td><td style="color:#8ba0ad">—</td><td class="contract-date">—</td><td class="contract-running">—</td><td style="color:#8ba0ad">—</td><td>${mTargetStr}</td><td><b>${mRevenueStr}</b></td><td><b>${mRestockStr}</b></td><td>${m.achievement===null?'—':fmt(m.achievement*100,1)+'%'}</td><td>${m.totalAchievement===null?'—':fmt(m.totalAchievement*100,1)+'%'}</td><td><span class="pill ${m.target===null?'':m.transactions?'yes':'wait'}">${m.target===null?'Outside plan':m.transactions?'Purchased':'No purchases'}</span></td></tr>`);
      if(hasDays){
       m.days.forEach(d=>{
        const dRevenueStr=fmt(cvt(d.amount));
-       html.push(`<tr class="child-row day-row ${outletId} ${monthId}" style="display:${(isOpen&&isMonthOpen)?'table-row':'none'}"><td><div class="day-cell-wrap"><span class="day-dot">↳</span><span class="day-date">${escape(d.date)}</span></div></td><td colspan="6" style="color:#647b8a;font-size:0.8rem;font-style:italic">${d.transactions} giao dịch mua hàng</td><td><b>${dRevenueStr}</b></td><td colspan="2" style="color:#8ba0ad">—</td><td><span class="pill yes">Purchased</span></td></tr>`);
+       html.push(`<tr class="child-row day-row ${outletId} ${monthId}" style="display:${(isOpen&&isMonthOpen)?'table-row':'none'}"><td><div class="day-cell-wrap"><span class="day-dot">↳</span><span class="day-date">${escape(d.date)}</span></div></td><td colspan="7" style="color:#647b8a;font-size:0.8rem;font-style:italic">${d.transactions} giao dịch mua hàng</td><td><b>${dRevenueStr}</b></td><td style="color:#8ba0ad">—</td><td colspan="2" style="color:#8ba0ad">—</td><td><span class="pill yes">Purchased</span></td></tr>`);
       });
      }
     });
@@ -148,9 +152,9 @@ function render(){
   });
   $('rows').innerHTML=html.join('');
  }
- $('quality').textContent=`Loaded ${data.outlets.filter(o=>o.onList).length} outlets from On_list and ${data.sourceRows} purchase rows. ${data.invalidPeriods} rows excluded due to missing or invalid fiscal periods; ${data.missingCodes} purchase rows have no outlet code. Source rows are summed without automatic deduplication.`;
+ $('quality').textContent=`Loaded ${data.outlets.filter(o=>o.onList).length} outlets from On_list, ${data.sourceRows} purchase rows, and ${data.restockRows||0} restock rows. ${data.invalidPeriods} rows excluded due to missing or invalid fiscal periods; ${data.missingCodes} purchase rows have no outlet code. Source rows are summed without automatic deduplication.`;
 }
-async function refresh(){if($('refresh').disabled)return;refreshPs(()=>[data,filters(),{currency:getCurrency(),fxRate:getFxRate()}]);$('refresh').disabled=true;$('refresh').textContent='Refreshing…';try{const [p,b]=await Promise.all([readSheet('On_list'),readSheet('ONT mua hàng')]);const next=model(p,b);if(!next.periods.length)throw Error('No fiscal periods found in the data.');data=next;options('year',[...new Set(data.periods.map(p=>p.split('-')[0]))]);const latest=data.purchases.map(p=>p.period).sort().at(-1)||data.periods[0];$('year').value=latest.split('-')[0];periods();$('period').value=latest;options('region',[...new Set(data.outlets.map(o=>o.region))].sort(),'All regions');options('fsm',[...new Set(data.outlets.map(o=>o.fsm))].sort(),'All FSMs');options('level',[...new Set(data.outlets.filter(o=>o.onList).map(o=>o.level))].sort(),'All levels');const prevOutlet=$('outlet').value;$('outlet').innerHTML='<option value="">All outlets</option>'+data.outlets.slice().sort((a,b)=>a.name.localeCompare(b.name,'vi')).map(o=>`<option value="${escape(o.key)}">${escape(o.name)}</option>`).join('');if(data.outlets.some(o=>o.key===prevOutlet))$('outlet').value=prevOutlet;lastSuccess=new Date();$('synctime').textContent='Updated '+lastSuccess.toLocaleString('en-GB');$('error').hidden=true;render()}catch(e){$('error').hidden=false;$('error').textContent=e.message+(data?' Showing data from the last successful refresh.':' No data is available for this report.');$('synctime').textContent=lastSuccess?'Previous data · '+lastSuccess.toLocaleString('en-GB'):'Not connected';if(!data){$('level-rows').innerHTML='<tr><td colspan="7" class="empty">Unable to load data. Select Refresh data to retry.</td></tr>';$('level-total').innerHTML='';}if(!data)$('rows').innerHTML='<tr><td colspan="11" class="empty">Unable to load data. Select Refresh data to retry.</td></tr>'}finally{$('refresh').disabled=false;$('refresh').textContent='↻ Refresh data'}}
+async function refresh(){if($('refresh').disabled)return;refreshPs(()=>[data,filters(),{currency:getCurrency(),fxRate:getFxRate()}]);$('refresh').disabled=true;$('refresh').textContent='Refreshing…';try{const [p,b,rk]=await Promise.all([readSheet('On_list'),readSheet('ONT mua hàng'),readSheet('Restock').catch(()=>null)]);const next=model(p,b,rk);if(!next.periods.length)throw Error('No fiscal periods found in the data.');data=next;options('year',[...new Set(data.periods.map(p=>p.split('-')[0]))]);const latest=data.purchases.map(p=>p.period).sort().at(-1)||data.periods[0];$('year').value=latest.split('-')[0];periods();$('period').value=latest;options('region',[...new Set(data.outlets.map(o=>o.region))].sort(),'All regions');options('fsm',[...new Set(data.outlets.map(o=>o.fsm))].sort(),'All FSMs');options('level',[...new Set(data.outlets.filter(o=>o.onList).map(o=>o.level))].sort(),'All levels');const prevOutlet=$('outlet').value;$('outlet').innerHTML='<option value="">All outlets</option>'+data.outlets.slice().sort((a,b)=>a.name.localeCompare(b.name,'vi')).map(o=>`<option value="${escape(o.key)}">${escape(o.name)}</option>`).join('');if(data.outlets.some(o=>o.key===prevOutlet))$('outlet').value=prevOutlet;lastSuccess=new Date();$('synctime').textContent='Updated '+lastSuccess.toLocaleString('en-GB');$('error').hidden=true;render()}catch(e){$('error').hidden=false;$('error').textContent=e.message+(data?' Showing data from the last successful refresh.':' No data is available for this report.');$('synctime').textContent=lastSuccess?'Previous data · '+lastSuccess.toLocaleString('en-GB'):'Not connected';if(!data){$('level-rows').innerHTML='<tr><td colspan="9" class="empty">Unable to load data. Select Refresh data to retry.</td></tr>';$('level-total').innerHTML='';}if(!data)$('rows').innerHTML='<tr><td colspan="13" class="empty">Unable to load data. Select Refresh data to retry.</td></tr>'}finally{$('refresh').disabled=false;$('refresh').textContent='↻ Refresh data'}}
 $('refresh').addEventListener('click',refresh);$('year').addEventListener('change',()=>{periods();render()});['period','region','fsm','outlet','level','price','unit'].forEach(id=>$(id)?.addEventListener('change',render));$('search').addEventListener('input',render);
 $('currency')?.addEventListener('change',()=>{setCurrency($('currency').value);render();});
 

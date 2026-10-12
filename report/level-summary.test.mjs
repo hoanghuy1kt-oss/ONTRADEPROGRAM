@@ -27,3 +27,18 @@ assert.equal(summary.total.outletCount,4);
 assert.equal(summarizeLevels(rows.filter(r=>r.level==='A')).total.outletCount,2);
 assert.equal(summarizeLevels([]).total.outletCount,0);
 console.log('Outlet counts passed: each Level, total, filters and empty data.');
+
+const restockRows=[
+ {level:'A',onList:true,targetTotal:200,plan:100,amount:50000000,restockAmount:10000000,sopT1:'LE GIA VINH'},
+ {level:'A',onList:true,targetTotal:800,plan:400,amount:400000000,restockAmount:20000000,sopT1:'LE GIA VINH'},
+ {level:'B',onList:true,targetTotal:100,plan:0,amount:0,restockAmount:5000000,sopT1:'KIM LIEN'},
+ {level:'B',onList:true,targetTotal:100,plan:0,amount:0,restockAmount:5000000,sopT1:'THANH VAN'}
+];
+const rkSummary=summarizeLevels(restockRows);
+assert.equal(rkSummary.levels[0].restockAmount,30000000);
+assert.equal(rkSummary.levels[0].sopT1,'LE GIA VINH');
+assert.equal(rkSummary.levels[1].restockAmount,10000000);
+assert.equal(rkSummary.levels[1].sopT1,'KIM LIEN, THANH VAN');
+assert.equal(rkSummary.total.restockAmount,40000000);
+console.log('Restock amount and SOP T1 assertions passed.');
+
