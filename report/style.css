@@ -7,7 +7,7 @@
 
 .filters{grid-template-columns:.8fr 1fr 1fr 1.3fr 1.4fr}@media(max-width:1000px){.filters{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:650px){.filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
-.filters{grid-template-columns:.8fr 1fr 1fr 1.3fr 1.4fr .8fr}@media(max-width:1100px){.filters{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:650px){.filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.filters{grid-template-columns:.75fr .95fr .95fr 1.2fr 1.3fr .75fr 1.15fr}@media(max-width:1100px){.filters{grid-template-columns:repeat(4,minmax(0,1fr))}}@media(max-width:850px){.filters{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:650px){.filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 .ps-panel{margin-top:24px}.ps-panel p{font-size:.875rem}.ps-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:20px 0}.ps-kpis article{padding:18px;background:#f3f7f8;border-radius:8px}.ps-kpis span{font-size:.875rem;color:#607887;display:block}.ps-kpis strong{display:block;font-size:1.6rem;margin-top:12px;overflow-wrap:anywhere}.ps-warning{background:#fff2dc;color:#7e561b;border-radius:6px;padding:12px}.ps-panel td:nth-child(n+3){text-align:right;white-space:nowrap}@media(max-width:850px){.ps-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
@@ -70,3 +70,42 @@ main{max-width:none;width:100%;padding-inline:clamp(16px,2vw,32px)}
 .level-summary .level-outlet th{padding-left:42px;min-width:220px}
 .level-outlet-name{display:block;font-weight:600}
 .level-outlet small{display:block;color:#7a8b98;font-size:.75rem;margin-top:5px}
+
+/* Currency & Exchange Rate Controls */
+.periodline-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.currency-picker{display:flex;gap:6px;align-items:center;width:100%}
+.currency-picker select{flex:1;min-width:0;font-weight:600}
+.btn-gear{min-height:43px;padding:0 12px;background:#edf3f5;color:#2d4c5c;border:1px solid #d6e0e5;border-radius:6px;cursor:pointer;font-size:1rem;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s ease}
+.btn-gear:hover{background:#deebf0;border-color:#bdced7}
+.fx-badge{background:#eaf4f2;color:#18685e;border:1px solid #c2ded9;border-radius:6px;padding:6px 12px;font-size:.78rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .15s ease}
+.fx-badge:hover{background:#dcedea;border-color:#aed5ce}
+.fx-badge.is-usd{background:#174e54;color:#fff;border-color:#174e54}
+.fx-badge-icon{font-size:.85rem}
+
+/* Exchange Rate Settings Dialog */
+.fx-dialog{padding:0;border:none;border-radius:12px;max-width:460px;width:92%;box-shadow:0 18px 50px rgba(18,42,57,.32);background:transparent}
+.fx-dialog::backdrop{background:rgba(14,28,38,.58);backdrop-filter:blur(2px)}
+.fx-modal-card{background:#fff;border-radius:12px;overflow:hidden;border:1px solid #dce4e9}
+.fx-modal-header{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;background:#f8fbfc;border-bottom:1px solid #e7eff2}
+.fx-modal-title{display:flex;align-items:center;gap:10px}
+.fx-modal-icon{font-size:1.3rem}
+.fx-modal-title h3{margin:0;font-size:1.05rem;font-weight:700;color:#182a39}
+.fx-close-btn{background:none;border:none;font-size:1.15rem;color:#647b8a;cursor:pointer;padding:4px 8px;border-radius:4px;line-height:1}
+.fx-close-btn:hover{background:#edf2f5;color:#182a39}
+.fx-modal-body{padding:22px;display:flex;flex-direction:column;gap:16px;margin:0}
+.fx-field{display:flex;flex-direction:column;gap:6px}
+.fx-field label{color:#344f62;font-size:.875rem}
+.fx-input-wrapper{position:relative;display:flex;align-items:center}
+.fx-input-wrapper input{padding-right:50px;font-weight:700;font-size:1.05rem;color:#17675f}
+.fx-input-suffix{position:absolute;right:14px;font-weight:700;color:#657b89;font-size:.8125rem;pointer-events:none}
+.fx-field-hint{display:flex;justify-content:space-between;align-items:center;font-size:.75rem;color:#6c7c89;margin-top:4px}
+.btn-text{background:none;border:none;color:#1c796f;cursor:pointer;padding:0;font-size:.75rem;font-weight:600;text-decoration:underline}
+.btn-text:hover{color:#11534c}
+.fx-preview-box{background:#f1f8f7;border:1px solid #cce8e3;border-radius:8px;padding:12px 14px}
+.fx-preview-label{font-size:.75rem;color:#536f7c;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.fx-preview-value{font-size:.875rem;font-weight:700;color:#165b53;margin-top:4px}
+.fx-error{background:#fff0e3;border:1px solid #e5b482;border-radius:6px;padding:10px 12px;font-size:.8125rem;color:#834d1e}
+.fx-modal-footer{display:flex;justify-content:flex-end;gap:10px;padding-top:14px;border-top:1px solid #eef2f5}
+.btn-primary{background:#1c796f;color:#fff;border:0;border-radius:6px;padding:10px 18px;font-weight:600;cursor:pointer;transition:background .15s ease}
+.btn-primary:hover{background:#145e56}
+
