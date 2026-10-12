@@ -39,6 +39,10 @@ assert.equal(rkSummary.levels[0].restockAmount,30000000);
 assert.equal(rkSummary.levels[0].sopT1,'LE GIA VINH');
 assert.equal(rkSummary.levels[1].restockAmount,10000000);
 assert.equal(rkSummary.levels[1].sopT1,'KIM LIEN, THANH VAN');
+assert.equal(rkSummary.levels[0].restockRate, 30000000 / 450000000);
+assert.equal(rkSummary.levels[1].restockRate, null);
 assert.equal(rkSummary.total.restockAmount,40000000);
-console.log('Restock amount and SOP T1 assertions passed.');
+assert.equal(rkSummary.total.restockRate, 40000000 / 450000000);
+assert.equal(rkSummary.total.sopT1, '');
+console.log('Restock amount, restockRate and SOP T1 assertions passed.');
 

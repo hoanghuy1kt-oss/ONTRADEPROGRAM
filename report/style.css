@@ -45,12 +45,15 @@ header{height:108px}.report-logo{width:76px;height:88px;object-fit:contain;displ
 
 
 /* Contract dates and elapsed duration in Outlet details. */
-.detail table{min-width:1750px}
-.detail td:nth-child(n+7):nth-child(-n+12),.detail th:nth-child(n+7):nth-child(-n+12){text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.detail table{min-width:1850px}
+.detail td:nth-child(n+7):nth-child(-n+13),.detail th:nth-child(n+7):nth-child(-n+13){text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .detail td.contract-date,.detail th:nth-child(5){text-align:left;white-space:nowrap}
-.detail td:nth-child(4),.detail th:nth-child(4){text-align:left;white-space:nowrap}
 .detail .contract-running{font-weight:600;color:#17675f;white-space:nowrap}
 #runtime-note{font-size:.75rem}
+
+/* S.O.P T1 column styling - strictly left-aligned */
+.col-sop,th.col-sop,td.col-sop{text-align:left!important;white-space:nowrap}
+.outlet-fsm-sub{display:block;color:#17675f;font-weight:700;font-size:.78rem;margin:3px 0 2px}
 
 /* Use the available viewport width for the report instead of a 1500px cap. */
 main{max-width:none;width:100%;padding-inline:clamp(16px,2vw,32px)}
@@ -59,9 +62,9 @@ main{max-width:none;width:100%;padding-inline:clamp(16px,2vw,32px)}
 .level-summary{padding:0;overflow:hidden;margin:22px 0}
 .level-summary .panelhead{padding:24px}
 .level-summary p{margin:6px 0 0;font-size:.8125rem}
-.level-summary table{min-width:1100px}
+.level-summary table{min-width:1200px}
 .level-summary td:not(.empty),.level-summary thead th:not(:first-child){text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
-.level-summary thead th:nth-child(3),.level-summary tbody td:nth-child(2),.level-summary tfoot td:nth-child(2){text-align:left}
+.level-summary th.col-sop,.level-summary td.col-sop{text-align:left!important}
 .level-summary tbody th{background:transparent;font-weight:600;color:#182a39}
 .level-summary tfoot th,.level-summary tfoot td{background:#eaf4f2;font-weight:700;border-top:2px solid #c9dfda}
 @media(max-width:650px){.level-summary .panelhead{padding:18px}}
@@ -71,7 +74,7 @@ main{max-width:none;width:100%;padding-inline:clamp(16px,2vw,32px)}
 .level-summary .level-outlet th,.level-summary .level-outlet td{background:#f8fbfc;font-weight:400;border-top:0}
 .level-summary .level-outlet th{padding-left:42px;min-width:220px}
 .level-outlet-name{display:block;font-weight:600}
-.level-outlet small{display:block;color:#7a8b98;font-size:.75rem;margin-top:5px}
+.level-outlet small{display:block;color:#7a8b98;font-size:.75rem;margin-top:3px}
 
 /* Currency & Exchange Rate Controls */
 .periodline-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap}

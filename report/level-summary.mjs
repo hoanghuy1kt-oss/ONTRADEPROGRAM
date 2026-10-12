@@ -26,11 +26,12 @@ export function summarizeLevels(rows) {
     return {
       level: group.level,
       outletCount: group.outletCount,
-      sopT1: group.level === 'Total' ? (sops.length === 1 ? sops[0] : '—') : (sops.length === 1 ? sops[0] : (sops.length > 1 ? sops.join(', ') : '—')),
+      sopT1: group.level === 'Total' ? (sops.length === 1 ? sops[0] : '') : (sops.length === 1 ? sops[0] : (sops.length > 1 ? sops.join(', ') : '')),
       totalTarget: group.hasTotal ? group.totalTarget : null,
       cumulativeTarget: group.hasPlan ? group.cumulativeTarget : null,
       revenue: group.revenue,
       restockAmount: group.restockAmount,
+      restockRate: group.revenue > 0 ? (group.restockAmount / group.revenue) : null,
       cumulativeAchievement: group.cumulativeTarget > 0 ? group.revenue / group.cumulativeTarget : null,
       totalAchievement: group.totalTarget > 0 ? group.revenue / group.totalTarget : null,
     };
