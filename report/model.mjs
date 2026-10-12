@@ -27,11 +27,10 @@ function formatVnDate(v){
 export function model(plan,buy,restock=[]){
  const ph=plan[0].map(norm),bh=buy[0].map(norm);const col=(h,n)=>{const i=h.indexOf(norm(n));if(i<0)throw Error('Missing source column: '+n);return i};
  const pc=col(ph,'MÃ OUTLET'),pn=col(ph,'TÊN OUTLET'),pr=col(ph,'VÙNG'),pf=col(ph,'FSM'),pl=col(ph,'LEVEL'),ps=col(ph,'Start date'),pe=col(ph,'End Date');
- const psop=ph.indexOf(norm('S.O.P T1'))>=0?ph.indexOf(norm('S.O.P T1')):ph.findIndex(h=>h.includes('S.O.P')||h.includes('SOP'));
  const bc=col(bh,'MÃ OUTLET'),bn=col(bh,'TÊN OUTLET'),bp=col(bh,'P - Tháng'),b110=col(bh,'Thành tiền (giá 110)'),b100=col(bh,'Thành tiền (giá 100)'),bf=col(bh,'FSM');
  const bdate=bh.indexOf('NGÀY HÓA ĐƠN')>=0?bh.indexOf('NGÀY HÓA ĐƠN'):bh.findIndex(h=>h.includes('NGÀY'));
  const periods=plan[0].map((x,i)=>[canonical(x),i]).filter(([p])=>p);const outlets=new Map;let invalidPeriods=0,missingCodes=0;
- for(const r of plan.slice(1)){if(!r[pn])continue;let k=key(r[pc],r[pn]);if(outlets.has(k))throw Error('Duplicate outlet code in On_list: '+r[pc]+'. Check the source before summing targets.');const targets={};for(const [p,i]of periods){if(r[i]!==null&&r[i]!==undefined&&r[i]!=='')targets[p]=num(r[i]);}outlets.set(k,{key:k,code:r[pc]||'',name:r[pn],region:r[pr]||'Unspecified',fsm:r[pf]||'Unspecified',sopT1:psop>=0&&r[psop]?String(r[psop]).trim():'',level:r[pl]||'—',targets,startDate:parseContractDate(r[ps]),endDate:parseContractDate(r[pe]),hasEndDate:r[pe]!==null&&r[pe]!==undefined&&String(r[pe]).trim()!=='',onList:true});}
+ for(const r of plan.slice(1)){if(!r[pn])continue;let k=key(r[pc],r[pn]);if(outlets.has(k))throw Error('Duplicate outlet code in On_list: '+r[pc]+'. Check the source before summing targets.');const targets={};for(const [p,i]of periods){if(r[i]!==null&&r[i]!==undefined&&r[i]!=='')targets[p]=num(r[i]);}outlets.set(k,{key:k,code:r[pc]||'',name:r[pn],region:r[pr]||'Unspecified',fsm:r[pf]||'Unspecified',sopT1:'',level:r[pl]||'—',targets,startDate:parseContractDate(r[ps]),endDate:parseContractDate(r[pe]),hasEndDate:r[pe]!==null&&r[pe]!==undefined&&String(r[pe]).trim()!=='',onList:true});}
  const purchases=[];for(const r of buy.slice(1)){if(!r[bn]&&!r[bc])continue;const p=canonical(r[bp]);if(!p){invalidPeriods++;continue;}const k=key(r[bc],r[bn]);if(!r[bc])missingCodes++;if(!outlets.has(k))outlets.set(k,{key:k,code:r[bc]||'',name:r[bn]||'Unnamed outlet',region:'Unspecified',fsm:r[bf]||'Unspecified',sopT1:'',level:'—',targets:{},startDate:null,endDate:null,onList:false});purchases.push({key:k,period:p,date:bdate>=0&&r[bdate]?String(r[bdate]).trim():'',v110:num(r[b110]),v100:num(r[b100])});}
  const restocks=[];
  if(Array.isArray(restock)&&restock.length>1){
@@ -55,7 +54,10 @@ export function model(plan,buy,restock=[]){
    const sop=rsop>=0&&r[rsop]?String(r[rsop]).trim():'';
    if(outlets.has(k)){
     const o=outlets.get(k);
-    if(!o.sopT1&&sop)o.sopT1=sop;
+    if(sop){
+     if(!o.sopT1)o.sopT1=sop;
+     else if(!o.sopT1.split(', ').includes(sop))o.sopT1+=', '+sop;
+    }
    }else{
     outlets.set(k,{key:k,code:code||'',name:name||'Unnamed outlet',region:'Unspecified',fsm:(rf>=0&&r[rf]?String(r[rf]).trim():'Unspecified'),sopT1:sop,level:'—',targets:{},startDate:null,endDate:null,onList:false});
    }
